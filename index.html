@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>碳排全景视图 - 面向工业碳排放监管的决策支持系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" />
+    <script src="https://js.arcgis.com/4.28/"></script>
+    <style>
+        :root {
+            --main-bg-color: #0a192f;
+            --panel-bg-color: rgba(10, 42, 80, 0.65);
+            --border-color: #1a3a5e;
+            --highlight-color: #4db8ff;
+            --text-color: #cce7ff;
+            --title-color: #61dafb;
+            --nav-active-bg: rgba(0, 123, 255, 0.25);
+            --positive-color: #f8696b;
+            --negative-color: #54b174;
+            --bg-color: #03102c;
+            --sidebar-bg: #0a192f;
+            --card-bg: #0a192f;
+            --card-border-color: rgba(0, 191, 255, 0.4);
+            --text-primary: #e6f1ff;
+            --text-secondary: #a8b2d1;
+            --accent-blue: #00bfff;
+            --accent-cyan: #64ffda;
+            --accent-yellow: #facc15;
+            --accent-green: #33ff99;
+            --accent-red: #ff4d4d;
+            --active-item-bg: #005f99;
+            --font-family: 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        }
+        body, html {margin: 0; padding: 0; height: 100%;font-family: var(--font-family);color: var(--text-color);background-color: var(--main-bg-color);overflow: hidden;}
+        * { box-sizing: border-box; }
+        .super-container {
+            display: flex; height: 100vh; width: 100vw;
+            background-image: radial-gradient(circle at top left, rgba(10, 42, 80, 0.3), transparent 40%),
+                              radial-gradient(circle at bottom right, rgba(10, 25, 47, 0.4), transparent 50%);
+            background-size: cover;
+            background-position: center;
+        }
+        .sidebar {min-width: 220px;background-color: rgba(4, 18, 38, 0.7);backdrop-filter: blur(8px);padding: 20px 0;display: flex;flex-direction: column;flex-shrink: 0;border-right: 1px solid var(--border-color);box-shadow: 2px 0 15px rgba(0,0,0,0.3);z-index: 100;}
+        .sidebar-header {font-size: 1.5em;font-weight: bold;color: #fff;text-align: center;padding: 20px 0;margin-bottom: 20px;}
+        .sidebar-header .bi {margin-right: 10px;color: var(--title-color);}
+        .sidebar ul {list-style-type: none;padding: 0;margin: 0;}
+        .sidebar .nav-item .nav-link {display: flex;align-items: center;font-size: 1em;color: var(--text-color);text-decoration: none;border-left: 4px solid transparent;padding: 15px 25px;transition: all 0.3s ease;cursor: pointer;white-space: nowrap;}
+        .sidebar .nav-link .bi {font-size: 1.2em;margin-right: 15px;width: 24px;text-align: center;}
+        .sidebar .nav-item .nav-link:hover {background-color: rgba(0, 123, 255, 0.15);color: #fff;}
+        .sidebar .nav-item .nav-link.active {background-color: var(--nav-active-bg);border-left-color: var(--highlight-color);font-weight: bold;color: #fff;}
+        .container {flex-grow: 1;display: flex;flex-direction: column;height: 100vh;position: relative;}
+        .top-right-logo {position: absolute;top: 25px; right: 30px;display: flex;align-items: center;color: var(--text-color);font-size: 1em;z-index: 10;}
+        .top-right-logo .bi {font-size: 1.5em;margin-right: 8px;color: var(--highlight-color);}
+        .header {text-align: center;padding: 20px 0;font-size: 2em;font-weight: bold;background-color: rgba(10, 25, 47, 0.5);text-shadow: 2px 2px 8px rgba(0,0,0,0.7);color: #fff;flex-shrink: 0;height: 80px;display: flex;align-items: center;justify-content: center;}
+        .page-module {display: none;flex: 1;padding: 20px;overflow: hidden;gap: 20px;}
+        .page-module.active {display: flex;}
+        .main-panel {display: flex;flex-direction: column;}
+        .main-panel-title {color: rgb(97, 218, 251);text-align: center;font-size: 22px;font-weight: bold;flex-shrink: 0;padding: 10px 0;margin: 0;margin-bottom: 15px; margin-top: 0px;padding-bottom: 10px; padding-bottom: 10px;
+        }
+        #page-panorama {display: none;grid-template-columns: 3fr 5fr 3fr;grid-template-rows: 1.2fr 1fr 1fr;gap: 20px;}
+        #page-panorama.active {display: grid;}
+        #page-panorama .panel {background: var(--panel-bg-color);border: 1px solid var(--border-color);padding: 15px;backdrop-filter: blur(10px);display: flex;flex-direction: column;position: relative;}
+        #page-panorama .panel::before,
+        #page-panorama .panel::after {content: '';position: absolute;width: 20px;height: 20px;border-color: var(--accent-blue);border-style: solid;}
+        #page-panorama .panel::before {top: -2px;left: -2px;border-width: 3px 0 0 3px;}
+        #page-panorama .panel::after {bottom: -2px;right: -2px;border-width: 0 3px 3px 0;}
+        #page-panorama .panel-title {font-size: 18px;color: rgb(97, 218, 251);margin-bottom: 15px;margin-top: 0px;padding-bottom: 10px;border-bottom: 1px solid var(--border-color);font-weight: normal;font-weight: bold;text-align: center;}
+        #page-panorama .chart-container {flex-grow: 1;width: 100%;height: 100%;min-height: 150px;}
+        #page-panorama .panel-left-1 {grid-column: 1 / 2;grid-row: 1 / 2;}
+        #page-panorama .panel-left-2 {grid-column: 1 / 2;grid-row: 2 / 3;}
+        #page-panorama .panel-left-3 {grid-column: 1 / 2;grid-row: 3 / 4;}
+        #page-panorama .panel-center-map {grid-column: 2 / 3;grid-row: 1 / 3;padding: 0;overflow: hidden;}
+        #page-panorama .panel-center-overview {grid-column: 2 / 3;grid-row: 3 / 4;}
+        #page-panorama .panel-right-1 {grid-column: 3 / 4;grid-row: 1 / 2;}
+        #page-panorama .panel-right-2 {grid-column: 3 / 4;grid-row: 2 / 3;}
+        #page-panorama .panel-right-3 {grid-column: 3 / 4;grid-row: 3 / 4;}
+        #page-panorama .panel-left-3 {padding: 0;background: #FFFFFF;display: flex;flex-direction: column;}
+        #page-panorama .k-line-box h3 {color: rgb(97, 218, 251);font-size: 18px;font-weight: bold;padding: 0px 15px 0px 5px;text-align: center;  }
+        #page-panorama .k-line-box .chart-container { padding: 0px; }
+        #page-panorama .stats-grid {display: grid;grid-template-columns: 1fr 1fr;gap: 15px;flex-grow: 1;align-content: space-around;}
+        #page-panorama .stat-item {display: flex;flex-direction: column;align-items: center;justify-content: center;}
+        #page-panorama .stat-value {font-size: 28px;font-weight: bold;color: #ffffff;}
+        #page-panorama .stat-value.green { color: #32cd32; }
+        #page-panorama .stat-value.orange { color: #ffa500; }
+        #page-panorama .stat-label {font-size: 14px;color: var(--font-color);margin-top: 5px;}
+        #page-panorama .overview-container {display: flex;gap: 20px;height: 100%;flex-grow: 1;}
+        #page-panorama .overview-box {flex: 1;background-color: rgba(0,0,0,0.2);border-radius: 6px;padding: 15px;display: flex;flex-direction: column;justify-content: center;align-items: center;}
+        #page-panorama .overview-box .label {font-size: 16px;margin-bottom: 10px;}
+        #page-panorama .overview-box .value {font-size: 32px;font-weight: bold;color: var(--highlight-color);}
+        #page-supervision {display: none;grid-template-columns: 2.5fr 6fr 3.5fr;gap: 20px;overflow: hidden;padding: 20px;}
+        #page-supervision.active {display: grid;}
+        #page-supervision .grid-column {display: flex;flex-direction: column;gap: 10px ;overflow: hidden;}
+        #page-supervision .card {background-color: var(--card-bg);border: 1px solid var(--card-border-color);padding: 10px 10px ;display: flex;flex-direction: column;position: relative;}
+        #page-supervision .card::before, #page-supervision .card::after {content: '';position: absolute;width: 20px;height: 20px;border-color: var(--accent-blue);border-style: solid;}
+        #page-supervision .card::before {top: -2px;left: -2px;border-width: 3px 0 0 3px;}
+        #page-supervision .card::after {bottom: -2px;right: -2px;border-width: 0 3px 3px 0;}
+        #page-supervision .card-title {font-size: 16px;color: rgb(97, 218, 251);justify-content: center;font-weight: 600;padding-top: 2px;padding-bottom: 2px;margin-bottom: 4px;margin-top: 0px;display: flex;align-items: center;}
+        #page-supervision .card-title::before {display: none;}
+        #page-supervision .card-content { flex: 1; overflow: hidden; }
+        #page-supervision #task-management,
+        #page-supervision #emission-list,
+        #page-supervision #warning-stream,
+        #page-supervision #root-cause-analysis {min-height: 0;}
+        #page-supervision #task-management { flex: 3; }
+        #page-supervision #emission-list { flex: 2; }
+        #page-supervision #warning-stream { flex: 2; }
+        #page-supervision #root-cause-analysis { flex: 2; }
+        #page-supervision #task-management .table-wrapper {overflow-x: hidden;}
+        #page-supervision #emission-list .card-content,
+        #page-supervision #warning-stream .card-content {overflow-y: auto;}
+        #page-supervision #task-management .card-content {display: flex;flex-direction: column;padding: 0;}
+        #page-supervision .table-wrapper {flex-grow: 1;overflow-y: auto;padding: 0 5px;display: block;}
+        #page-supervision .table-wrapper::-webkit-scrollbar {display: block;width: 5px;}
+        #page-supervision .table-wrapper::-webkit-scrollbar-thumb {background: var(--accent-blue);border-radius: 3px;}
+        #page-supervision .table-wrapper::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        #page-supervision .card-footer {padding: 5px 5px;margin-top: auto;border-top: 1px solid var(--card-border-color);flex-shrink: 0;}
+        #page-supervision .create-task-btn {width: 100%;padding: 8px;background-color: rgba(0, 191, 255, 0.2);border: 1px solid var(--accent-blue);color: var(--text-primary);font-size: 14px;border-radius: 4px;cursor: pointer;transition: all 0.3s ease;font-weight: 600;}
+        #page-supervision .create-task-btn:hover { background-color: var(--accent-blue); color: white; }
+        #page-supervision table { width: 100%; border-collapse: collapse; }
+        #page-supervision th, #page-supervision td {text-align: left;padding: 5px 5px;color: var(--text-secondary);border-bottom: 1px solid rgba(0, 191, 255, 0.1);font-size: 12px;}
+        #page-supervision th { color: var(--text-primary); font-weight: 500; }
+        #page-supervision td:nth-child(2) {color: var(--text-primary);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;max-width: 120px;}
+        #page-supervision .status-tag {padding: 3px 5px;border-radius: 12px;font-size: 12px;font-weight: 500;}
+        #page-supervision .status-pending {background-color: rgba(250, 204, 21, 0.15);color: var(--accent-yellow);}
+        #page-supervision .status-in-progress {background-color: rgba(0, 191, 255, 0.15);color: var(--accent-cyan);}
+        #page-supervision .status-completed {background-color: rgba(168, 178, 209, 0.15);color: var(--text-secondary);}
+        #page-supervision .deviation-up {color: var(--accent-red);font-weight: bold;}
+        #page-supervision .deviation-mid {color: var(--accent-yellow);font-weight: bold;}
+        #page-supervision .warning-item {padding: 5px 0;font-size: 13px;border-bottom: 1px solid rgba(0, 191, 255, 0.1);}
+        #page-supervision .warning-item:last-child { border-bottom: none; }
+        #page-supervision .warning-item span {color: var(--accent-cyan);font-weight: bold;}
+        #page-supervision #root-cause-analysis {background-color: rgba(255, 77, 77, 0.1);border-color: rgba(255, 77, 77, 0.4);}
+        #page-supervision #root-cause-analysis .card-title {color: #ff9999;}
+        #page-supervision #root-cause-analysis p {font-size: 13px;line-height: 1.6;color: var(--text-secondary);}
+        #page-supervision #root-cause-analysis p span { color: var(--text-primary); }
+        #page-supervision .action-button {background-color: var(--accent-blue);color: white;border: none;padding: 6px 5px;border-radius: 3px;cursor: pointer;margin-top: 0px;font-size: 13px;}
+        #page-supervision #anomaly-map-card .card-content {padding: 0;position: relative;}
+        #page-supervision #viewDiv {padding: 0;margin: 0;height: 100%;width: 100%;}
+        #page-supervision .esri-popup .esri-popup__main-container {line-height: 1.7;}
+        #page-supervision .esri-popup .esri-popup__header-title {font-weight: bold;font-size: 1.1em;}
+        #page-supervision .popup-status-red {color: #d9534f;font-weight: bold;}
+        #page-supervision .popup-status-yellow {color: #f0ad4e;font-weight: bold;}
+        #page-supervision .popup-status-green {color: #5cb85c;font-weight: bold;}
+        #page-supervision #legendDiv {padding: 5px;background-color: rgba(10, 25, 47, 0.9);border-radius: 8px;box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);line-height: 1.6;min-width: 220px;border: 1px solid var(--card-border-color);}
+        #page-supervision #legendDiv h4 {margin: 0 0 5px 0;padding-bottom: 5px;border-bottom: 1px solid var(--card-border-color);font-size: 16px;text-align: center;font-weight: 600;}
+        #page-supervision .legend-item {display: flex;align-items: center;margin-bottom: 8px;font-size: 14px;}
+        #page-supervision .legend-item:last-child { margin-bottom: 0; }
+        #page-supervision .legend-icon {width: 24px;height: 24px;margin-right: 12px;}
+        #page-supervision #kpi-dashboard-card .card-content {display: grid;grid-template-columns: 1fr 1fr;grid-template-rows: 1fr 1fr;gap: 15px;align-content: center;}
+        #page-supervision .kpi-item {background-color: rgba(0, 191, 255, 0.05);border-radius: 4px;padding: 5px;display: flex;flex-direction: column;justify-content: center;align-items: center;}
+        #page-supervision .kpi-item .label {color: var(--text-secondary);font-size: 14px;margin-bottom: 8px;}
+        #page-supervision .kpi-item .value {font-size: 32px;font-weight: bold;}
+        #page-supervision .kpi-item .unit {font-size: 14px;margin-left: 5px;color: var(--text-secondary);}
+        #page-supervision .kpi-item .value.yellow {color: var(--accent-yellow); }
+        #page-supervision .kpi-item .value.blue { color: var(--accent-cyan); }
+        #page-supervision .kpi-item .value.red { color: var(--accent-red); }
+        #page-supervision .kpi-item .trend {display: flex;align-items: center;font-size: 20px;font-weight: bold;color: var(--accent-green);}
+        #page-supervision .kpi-item .trend i { margin-right: 5px; }
+        #page-supervision #knowledge-graph-card, #page-supervision #company-details-card { padding-bottom: 5px; }
+        #page-supervision #info-panel-content {-ms-overflow-style: auto;scrollbar-width: thin;scrollbar-color: var(--accent-blue) rgba(0,0,0,0.2);overflow-y: auto;overflow-x: hidden;}
+        #page-supervision #info-panel-content::-webkit-scrollbar {display: block;width: 6px;}
+        #page-supervision #info-panel-content::-webkit-scrollbar-thumb {background: var(--accent-blue);border-radius: 3px;}
+        #page-supervision #info-panel-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        #page-supervision #info-panel-content h2 {
+            font-size: 1.2em;
+            color: var(--accent-cyan);
+            border-bottom: 1px solid var(--card-border-color);
+            padding-bottom: 10px;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        #page-supervision #info-panel-content h3 {
+            font-size: 1.0em;
+            color: var(--text-primary);
+            background-color: rgba(0, 191, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 20px 0 10px 0;
+            border-left: 3px solid var(--accent-cyan);
+        }
+        #page-supervision #info-panel-content ul {
+            list-style-type: none;
+            padding-left: 5px;
+        }
+        #page-supervision #info-panel-content li {
+            padding: 6px 0;
+            margin-bottom: 2px;
+            border-bottom: 1px dashed rgba(0, 191, 255, 0.1);
+            font-size: 0.9em;
+        }
+        #page-supervision #info-panel-content li strong {
+            color: var(--text-secondary);
+            display: inline-block;
+            min-width: 120px;
+        }
+        #page-supervision #info-panel-content .tag {
+            display: inline-block;
+            padding: 3px 8px;
+            margin: 2px;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        #page-supervision #info-panel-content .tag-green { background-color: #4CAF50; }
+        #page-supervision #info-panel-content .tag-blue { background-color: #2196F3; }
+        #page-supervision #info-panel-content .tag-yellow {
+            background-color: #FFC107;
+            color: #000;
+        }
+        #page-supervision #info-panel-content .tag-red { background-color: #F44336; }
+        #page-supervision #info-panel-content .tag-grey { background-color: #607d8b; }
+        #page-supervision #info-panel-content {overflow-y: auto;}
+        #page-supervision #company-details-card {min-height: 0;}
+        #page-supervision .info-kpi-container {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            margin-top: 15px;
+        }
+        #page-supervision .info-kpi-item {padding: 5px;flex-basis: 30%;}
+        #page-supervision .info-kpi-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--accent-yellow);
+        }
+        #page-supervision .info-kpi-label {font-size: 0.8em;color: var(--text-secondary);}
+        #page-supervision .disclaimer {
+            font-style: italic;
+            color: var(--accent-yellow);
+            font-size: 0.8em;
+            background-color: rgba(255, 193, 7, 0.1);
+            padding: 5px;
+            border-radius: 3px;
+            display: block;
+            margin-top: 5px;
+        }
+        #page-supervision .panel-placeholder {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: var(--text-secondary);
+            font-size: 1.2em;
+            text-align: center;
+        }
+        #page-trading, #page-decision {flex-direction: row;}
+        .left-panel, .center-panel, .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .left-panel { width: 28%; }
+        .center-panel { flex: 1; }
+        .right-panel { width: 25%; }
+        .tech-box {
+            background: var(--panel-bg-color);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            position: relative;
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            border-radius: 4px;
+        }
+        .tech-box::before, .tech-box::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: var(--highlight-color);
+            border-style: solid;
+        }
+        .tech-box::before { top: -1px;left: -1px;border-width: 3px 0 0 3px;}
+        .tech-box::after { bottom: -1px;right: -1px;border-width: 0 3px 3px 0;}
+        .tech-box h3 { margin: 0 0 15px 0;font-size: 1.1em;color: var(--title-color);text-align: center;}
+        .chart-container { flex-grow: 1;width: 100%;height: 100%;min-height: 0;}
+        #page-trading .left-panel > .tech-box:nth-child(1) {flex: 3;padding: 0;overflow: hidden;background: #fff;}
+        #page-trading .left-panel > .tech-box:nth-child(2) { flex: 2; }
+        #page-trading .risk-table-container {flex-grow: 1;overflow-y: auto;}
+        #page-trading .risk-table {width: 100%;border-collapse: collapse;font-size: 0.9em;}
+        #page-trading .risk-table th, #page-trading .risk-table td {padding: 10px 8px;text-align: center;border-bottom: 1px solid var(--border-color);}
+        #page-trading .risk-table thead th {
+            color: var(--title-color);
+            position: sticky;
+            top: 0;
+            background: var(--panel-bg-color);
+        }
+        #page-trading .risk-table .cost {
+            color: var(--positive-color);
+            background-color: rgba(248, 105, 107, 0.15);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        #page-trading .risk-table .benefit {
+            color: var(--negative-color);
+            background-color: rgba(84, 177, 116, 0.15);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        #page-trading .center-panel > .tech-box:nth-child(1) { flex: 3; }
+        #page-trading .center-panel > .tech-box:nth-child(2) {flex: 1;justify-content: center;}
+        #page-trading .real-time-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            text-align: center;
+        }
+        #page-trading .stat-item .stat-label {
+            font-size: 0.9em;
+            color: #a0c8e0;
+            margin-bottom: 8px;
+        }
+        #page-trading .stat-item .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #fff;
+        }
+        #page-trading .stat-item .stat-value .bi {
+            font-size: 0.8em;
+            vertical-align: middle;
+            margin-right: 5px;
+            color: var(--negative-color);
+        }
+        #page-trading .stat-item .stat-value.positive { color: var(--positive-color); }
+        #page-trading .right-panel { height: 100%; }
+        #page-trading .right-panel > .tech-box { flex-shrink: 0; }
+        #page-trading .right-panel .k-line-box {
+            flex-grow: 1;
+            min-height: 0;
+            padding: 5px;
+        }
+        #page-trading .market-title {
+            font-size: 0.9em;
+            color: var(--title-color);
+            margin-bottom: 5px;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #page-trading .market-title .date {
+            font-size: 0.8em;
+            color: var(--text-color);
+            font-weight: normal;
+        }
+        #page-trading .market-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8em;
+            margin-bottom: 5px;
+        }
+        #page-trading .market-table td, #page-trading .market-table th {
+            padding: 7px 5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        #page-trading .market-table td:first-child, #page-trading .market-table th:first-child {
+            color: #a0c8e0;
+            text-align: left;
+        }
+        #page-trading .market-table td:last-child, #page-trading .market-table th:last-child {
+            text-align: right;
+            font-weight: bold;
+        }
+        #page-trading .market-table.detail-table { font-size: 0.8em; }
+        #page-trading .market-table.detail-table th {
+            color: var(--title-color);
+            text-align: left;
+            border-bottom: 2px solid var(--border-color);
+        }
+        #page-trading .market-table.detail-table th:nth-child(n+2), #page-trading .market-table.detail-table td:nth-child(n+2) { text-align: right; }
+        #page-trading .content-wrapper {
+            flex-grow: 1;
+            min-height: 0;
+            overflow-y: auto;
+        }
+        #page-trading .positive { color: var(--positive-color); }
+        #page-trading .negative { color: var(--negative-color); }
+        #page-trading .source-info {
+            font-size: 0.6em;
+            color: #a0c8e0;
+            text-align: right;
+            padding-top: 5px;
+            padding-bottom: 5px;
+        }
+        .risk-table-container::-webkit-scrollbar, #page-trading .content-wrapper::-webkit-scrollbar { width: 6px; }
+        .risk-table-container::-webkit-scrollbar-track, #page-trading .content-wrapper::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+            border-radius: 3px;
+        }
+        .risk-table-container::-webkit-scrollbar-thumb, #page-trading .content-wrapper::-webkit-scrollbar-thumb {
+            background: var(--highlight-color);
+            border-radius: 3px;
+        }
+        #page-decision .left-panel > .tech-box:nth-child(1) { height: 60%; }
+        #page-decision .left-panel > .tech-box:nth-child(2) { height: 40%; }
+        #page-decision .tech-box > p, #page-decision .tech-box > label {
+            margin: 0 0 5px 0;
+            font-size: 0.9em;,
+            #page-decision input, #page-decision button {
+                width: 100%;
+                padding: 8px;
+                margin-bottom: 5px;
+                border-radius: 2px;
+                border: 1px solid #334b6e;
+                background-color: rgba(30, 50, 80, 0.8);
+                color: #fff;
+                box-sizing: border-box; flex-shrink: 0;
+            }
+            #page-decision button {
+                background-color: #007bff;
+                border: none;
+                cursor: pointer;
+                font-weight: bold;
+                transition: background-color 0.3s;
+            }
+            #page-decision button:hover { background-color: #0056b3; }
+            #page-decision #affected-list-container {
+                flex-grow: 1;
+                overflow-y: auto;
+                min-height: 0;
+                margin-top: 10px;
+            }
+        }
+        #page-decision .affected-list table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8em;
+        }
+        #page-decision .affected-list th, #page-decision .affected-list td {
+            padding: 8px 6px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        #page-decision .affected-list th {
+            font-weight: bold;
+            color: #a0c8e0;
+            position: sticky;
+            top: 0;
+            background: var(--panel-bg-color);
+            z-index: 1;
+        }
+        #page-decision .affected-list tr:nth-child(even) { background-color: rgba(0,0,0,0.2); }
+        #page-decision .affected-list td:last-child {
+            color: var(--danger-color, #f8696b);
+            font-weight: bold;
+        }
+        #page-decision #affected-list-container::-webkit-scrollbar { width: 6px; }
+        #page-decision #affected-list-container::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+            border-radius: 3px;
+        }
+        #page-decision #affected-list-container::-webkit-scrollbar-thumb {background: var(--highlight-color);border-radius: 3px;}
+        #page-decision .results-overview {display: flex;justify-content: space-around;text-align: center;margin-top: 10px;flex-shrink: 0;}
+        #page-decision .results-overview .value {font-size: 1.3em;font-weight: bold;color: var(--title-color);margin: 5px 0;}
+        #page-decision .results-overview .label {font-size: 0.7em;color: #a0c8e0;margin: 0;}
+        #page-decision .tooltip-table {border-collapse: collapse;width: 100%;color: #333;}
+        #page-decision .tooltip-table td {padding: 6px 10px;border: 1px solid #ddd;}
+        #page-decision .tooltip-table .label {font-weight: bold;background-color: #f2f8ff;text-align: right;white-space: nowrap; }
+        #page-decision .tooltip-table .value { text-align: left; }
+        #page-decision .tooltip-list {list-style-type: none;padding-left: 0;margin: 0;max-height: 100px;overflow-y: auto;}
+        #page-decision .tooltip-list li { padding: 2px 0; }
+        #affected-list-container {max-height: 300px;overflow-y: auto;}
+        #affected-list-container .affected-list th {position: sticky;top: 0;background-color: var(--panel-bg-color);}
+        #page-trading .left-panel > .tech-box:nth-child(1) {background: var(--panel-bg-color);padding: 0px 0px;overflow-y: scroll;display: flex;flex-direction: column;}
+        .content-post table {width: 100%;border-collapse: collapse;font-size: 0.9em;}
+        .content-post table td {padding: 10px 8px;vertical-align: middle;border: none;border-bottom: 1px solid var(--border-color);}
+        .content-post table td:nth-child(1), .content-post table td:nth-child(2) {text-align: center;width: auto;}
+        .content-post table td strong {color: var(--title-color);}
+        #page-trading .left-panel > .tech-box:nth-child(1)::-webkit-scrollbar {width: 6px;}
+        #page-trading .left-panel > .tech-box:nth-child(1)::-webkit-scrollbar-track {background: rgba(0,0,0,0.2);border-radius: 3px;}
+        #page-trading .left-panel > .tech-box:nth-child(1)::-webkit-scrollbar-thumb {background: var(--highlight-color);border-radius: 3px;}
+        .modal {display: none;position: fixed;z-index: 1000;left: 0;top: 0;width: 100%;height: 100%;overflow: auto;background-color: rgba(0, 0, 0, 0.6);justify-content: center;align-items: center;}
+        .modal-content {background-color: var(--sidebar-bg);margin: auto;padding: 30px;border: 1px solid var(--card-border-color);width: 90%;max-width: 500px;border-radius: 8px;position: relative;box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);}
+        .close-button {color: #aaa;position: absolute;top: 15px;right: 20px;font-size: 28px;font-weight: bold;cursor: pointer;}
+        .close-button:hover, .close-button:focus {color: #fff;}
+        .modal-content h2 {text-align: center;color: var(--title-color);margin-top: 0;margin-bottom: 25px;}
+        .form-group {margin-bottom: 15px;}
+        .form-group label {display: block;margin-bottom: 5px;color: var(--text-secondary);font-size: 0.9em;}
+        .form-group input,
+        .form-group select {width: 100%;padding: 10px;background-color: var(--main-bg-color);border: 1px solid var(--border-color);border-radius: 4px;color: var(--text-primary);font-size: 1em;}
+        .form-display {display: block;padding: 10px;background-color: rgba(0,0,0,0.2);border-radius: 4px;color: var(--text-primary);}
+        .modal-submit-btn {width: 100%;padding: 12px;background-color: var(--accent-blue);border: none;border-radius: 4px;color: white;font-size: 1.1em;font-weight: bold;cursor: pointer;transition: background-color 0.3s ease;}
+        .modal-submit-btn:hover {background-color: #009acd;}
+        .status-new {background-color: rgba(73, 146, 255, 0.15);color: rgb(73, 146, 255);}
+        .hidden {display: none !important;}
+        @keyframes highlight-fade {
+            from { background-color: rgba(0, 191, 255, 0.4); }
+            to { background-color: transparent; }
+        }
+        .task-highlight {animation: highlight-fade 2s ease-out;}
+        #root-cause-analysis .analysis-list {list-style-type: none;padding-left: 0;margin: 0;font-size: 0.7em;}
+        #root-cause-analysis .analysis-list li {margin-bottom: 8px;}
+        #root-cause-analysis .analysis-list li:last-child {margin-bottom: 0;}
+    </style>
+</head>
+<body>
+<div class="super-container">
+    <nav class="sidebar">
+        <div class="sidebar-header"><i class="bi bi-shield-shaded"></i>智瞰碳踪</div>
+        <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link active" data-target="page-panorama"><i class="bi bi-display"></i>碳排全景视图</a></li>
+            <li class="nav-item"><a class="nav-link" data-target="page-supervision"><i class="bi bi-shield-check"></i>智能监管中心</a></li>
+            <li class="nav-item"><a class="nav-link" data-target="page-trading"><i class="bi bi-currency-exchange"></i>碳市交易洞察</a></li>
+            <li class="nav-item"><a class="nav-link" data-target="page-decision"><i class="bi bi-cpu"></i>决策支持中心</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="top-right-logo">
+            <i class="bi bi-bank2"></i>
+            <span>政府模块</span>
+        </div>
+        <header class="header">面向工业碳排放监管的决策支持系统</header>
+        <main id="page-panorama" class="page-module active">
+            <div class="panel panel-left-1">
+                <h2 class="panel-title">省级城市发展因子</h2>
+                <div id="factor-chart" class="chart-container"></div>
+            </div>
+            <div class="panel panel-left-2">
+                <h2 class="panel-title">智能监管看板</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-value">128 <span style="font-size:14px; color:var(--font-color);">家</span></span>
+                        <span class="stat-label">辖区控排企业</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value orange">7 <span style="font-size:14px; color:var(--font-color);">起</span></span>
+                        <span class="stat-label">本月风险预警</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value green">↓ 5.2%</span>
+                        <span class="stat-label">含碳量同比</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">15 <span style="font-size:14px; color:var(--font-color);">项</span></span>
+                        <span class="stat-label">待办修复任务</span>
+                    </div>
+                </div>
+            </div>
+            <div class="panel panel-left-3 k-line-box">
+                <h3 >碳行情K线图</h3>
+                <div id="panorama-candlestick-chart" class="chart-container"></div>
+            </div>
+            <div class="panel panel-center-map">
+                <iframe src="https://ourworldindata.org/grapher/annual-co2-emissions-per-country?tab=map&country=~OWID_WRL" width="100%" height="100%" style="border:none;" frameborder="0"></iframe>
+            </div>
+            <div class="panel panel-center-overview">
+                 <h2 class="panel-title" style="border:none; margin-bottom: 0;">碳排放数据总览 (百万吨)</h2>
+                 <div class="overview-container">
+                     <div class="overview-box"><div class="label">当月数据</div><div class="value">85.6</div></div>
+                     <div class="overview-box"><div class="label">当年累计数据</div><div class="value">978.2</div></div>
+                 </div>
+            </div>
+            <div class="panel panel-right-1">
+                <h2 class="panel-title">行业碳排占比</h2>
+                <div id="pie-chart" class="chart-container"></div>
+            </div>
+            <div class="panel panel-right-2">
+                <h2 class="panel-title">年度各部门碳排放趋势</h2>
+                <div id="sector-line-chart" class="chart-container"></div>
+            </div>
+            <div class="panel panel-right-3">
+                <h2 class="panel-title">各省工业碳排放量 (2024)</h2>
+                <div id="province-bar-chart" class="chart-container"></div>
+            </div>
+        </main>
+        <main id="page-supervision" class="page-module">
+            <div class="grid-column">
+                <div class="card" id="task-management">
+                    <h3 class="card-title">核查任务管理</h3>
+                    <div class="card-content">
+                        <div class="table-wrapper">
+                            <table id="task-table">
+                                <thead><tr><th>任务编号</th><th>目标企业</th><th>风险描述</th><th>指派部门</th><th>处理状态</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer"><button class="create-task-btn">+ 创建任务</button></div>
+                    </div>
+                </div>
+                <div class="card" id="emission-list"><h3 class="card-title">企业排放监测列表</h3><div class="card-content">
+                    <table id="emission-table">
+                        <thead><tr><th>企业</th><th>行业</th><th>偏差率</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div></div>
+                <div class="card" id="warning-stream"><h3 class="card-title">预警事件流</h3>
+                    <div class="card-content" id="warning-stream-content"></div>
+                </div>
+               <div class="card" id="root-cause-analysis">
+                   <h3 class="card-title" id="root-cause-title">智能根因分析</h3>
+                    <div class="card-content">
+                        <div id="root-cause-content-wrapper">
+                            <p id="root-cause-content">当前无高风险企业，无需进行根因分析。</p>
+                        </div>
+                        <button id="view-task-details-btn" class="action-button hidden">查看核查任务</button>
+                    </div>
+               </div>
+            </div>
+            <div class="grid-column">
+                <div class="card" id="anomaly-map-card" style="flex: 5;">
+                    <h3 class="card-title">空间异常检测分析图</h3>
+                    <div class="card-content"><div id="viewDiv"></div></div>
+                </div>
+                <div class="card" id="kpi-dashboard-card" style="flex: 1.5;">
+                    <h3 class="card-title">智能监管看板</h3>
+                    <div class="card-content">
+                        <div class="kpi-item"><div class="label">辖区控排企业</div><div><span class="value blue" id="kpi-company-count">0</span><span class="unit">家</span></div></div>
+                        <div class="kpi-item"><div class="label">本月高风险预警</div><div><span class="value red" id="kpi-high-risk">0</span><span class="unit">起</span></div></div>
+                        <div class="kpi-item"><div class="label">总排放量同比</div><div class="trend" id="kpi-total-emission"><i class="fa-solid fa-arrow-down"></i><span>4.8%</span></div></div>
+                        <div class="kpi-item"><div class="label">待办核查任务</div><div><span class="value yellow" id="kpi-pending-tasks">0</span><span class="unit">项</span></div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-column">
+                <div class="card" id="knowledge-graph-card" style="flex: 3;">
+                    <h3 class="card-title">湖北省重点控排企业监管知识图谱</h3>
+                    <div class="card-content" id="knowledge-graph-container"></div>
+                </div>
+                <div class="card" id="company-details-card" style="flex: 2;">
+                    <h3 class="card-title">企业碳征信报告</h3>
+                    <div class="card-content" id="info-panel-content">
+                        <div class="panel-placeholder">
+                            <p>请点击上方图谱中的企业节点</p>
+                            <p style="font-size: 0.9em; margin-top: 20px;">查看其详细“碳征信”报告</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="task-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close-button">&times;</span>
+                    <h2>创建新的核查任务</h2>
+                    <form id="task-form">
+                        <div class="form-group">
+                            <label>任务编号</label>
+                            <span id="task-id-display" class="form-display"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="task-company">目标企业</label>
+                            <input type="text" id="task-company" required placeholder="请输入企业全称">
+                        </div>
+                        <div class="form-group">
+                            <label for="task-risk">风险描述</label>
+                            <select id="task-risk">
+                                <option value="排放数据突增">排放数据突增</option>
+                                <option value="偏差率过大">偏差率过大</option>
+                                <option value="历史数据核查">历史数据核查</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="task-department">指派部门</label>
+                            <select id="task-department">
+                                <option value="环保一组">环保一组</option>
+                                <option value="环保二组">环保二组</option>
+                                <option value="环保三组">环保三组</option>
+                                <option value="技术支持部">技术支持部</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>处理状态</label>
+                            <span class="form-display">新发布</span>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="modal-submit-btn">确认添加</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+        <main id="page-trading" class="page-module">
+             <section class="left-panel">
+                <div class="tech-box">
+                    <div class="tech-box-content">
+                        <div class="content-post">
+                            <h2 class="wp-block-heading" style="text-align: center; color: rgb(97, 218, 251) "><strong>温室气体自愿减排项目（CCER）已登记减排量情况</strong>汇总</h2>
+                            <p style="text-align: right; font-size: 0.7em; margin-bottom: 5px;margin-right: 10px;">截至2025年8月</p>
+                                <figure class="wp-block-table is-style-stripes">
+                                <table>
+                                    <tbody>
+                                        <tr><td><strong>项目数量（个）</strong></td><td>11</td></tr>
+                                        <tr><td><strong>分布省份</strong></td><td>5个（广东2个，福建1个，山东1个，甘肃2个，江苏5个）</td></tr>
+                                        <tr><td><strong>预计计入期总减排量合计（吨）</strong></td><td>48,603,522</td></tr>
+                                        <tr><td><strong>申请登记减排量合计（吨）</strong></td><td>12,707,728</td></tr>
+                                        <tr><td><strong>2021年减排量合计（吨）</strong></td><td>199,660</td></tr>
+                                        <tr><td><strong>2022年减排量合计（吨）</strong></td><td>3,744,336</td></tr>
+                                        <tr><td><strong>2023年减排量合计（吨）</strong></td><td>4,342,511</td></tr>
+                                        <tr><td><strong>2024年减排量合计（吨）</strong></td><td>4,066,454</td></tr>
+                                        <tr><td><strong>2025年减排量合计（吨）</strong></td><td>354,768</td></tr>
+                                    </tbody>
+                                </table>
+                            </figure>
+                        </div>
+                    </div>
+                </div>
+                <div class="tech-box">
+                    <h3>企业交易行为与履约风险</h3>
+                    <div class="risk-table-container">
+                        <table class="risk-table">
+                            <thead><tr><th>企业</th><th>敞口(吨)</th><th>预估成本/收益(万元)</th></tr></thead>
+                            <tbody>
+                                <tr><td>华新水泥（阳新）有限公司</td><td>-80,500</td><td><span class="cost">成本: 720.5</span></td></tr>
+                                <tr><td>武汉钢铁有限公司</td><td>-50,200</td><td><span class="cost">成本: 449.3</span></td></tr>
+                                <tr><td>湖北三宁化工股份有限公司</td><td>30,000</td><td><span class="benefit">收益: 268.5</span></td></tr>
+                                <tr><td>国电长源第一发电有限责任公司</td><td>150,000</td><td><span class="benefit">收益: 1342.5</span></td></tr>
+                                <tr><td>中韩(武汉)石油化工有限公司</td><td>-12,000</td><td><span class="cost">成本: 107.4</span></td></tr>
+                                <tr><td>山鹰华中纸业有限公司</td><td>8,000</td><td><span class="benefit">收益: 71.6</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            <section class="center-panel">
+                 <div class="tech-box">
+                     <h2 class="main-panel-title">全国温室气体自愿减排交易</h2>
+                     <div id="main-trading-chart" class="chart-container"></div>
+                </div>
+                <div class="tech-box">
+                    <h3>实时行情数据</h3>
+                    <div class="real-time-stats">
+                         <div class="stat-item"><div class="stat-label">当日基准价</div><div class="stat-value"><i class="bi bi-check-circle-fill"></i>87.06</div></div>
+                        <div class="stat-item"><div class="stat-label">涨跌幅</div><div class="stat-value positive">+1.25%</div></div>
+                        <div class="stat-item"><div class="stat-label">挂牌成交量(吨)</div><div class="stat-value">600</div></div>
+                        <div class="stat-item"><div class="stat-label">成交额(万元)</div><div class="stat-value">107,668</div></div>
+                    </div>
+                </div>
+            </section>
+            <section class="right-panel">
+                <div class="tech-box">
+                    <h3 class="market-title">全国碳市场CEA价格行情 <span class="date">2025年6月30日</span></h3>
+                    <div class="content-wrapper">
+                        <table class="market-table">
+                            <tbody>
+                                <tr><td>开盘 (元/吨)</td><td>75.54</td></tr>
+                                <tr><td>最高 (元/吨)</td><td>77.10</td></tr>
+                                <tr><td>最低 (元/吨)</td><td>74.23</td></tr>
+                                <tr><td>收盘 (元/吨)</td><td>75.02</td></tr>
+                                <tr><td>涨跌幅 (%)</td><td class="negative">-1.99</td></tr>
+                            </tbody>
+                        </table>
+                        <table class="market-table detail-table">
+                            <thead><tr><th>类型</th><th>收盘 (元/吨)</th><th>涨跌幅 (%)</th></tr></thead>
+                            <tbody>
+                                <tr><td>CEA19-20</td><td>71.34</td><td class="negative">-6.13▼</td></tr>
+                                <tr><td>CEA21</td><td>76.00</td><td>0.00</td></tr>
+                                <tr><td>CEA22</td><td>76.80</td><td class="positive">1.60▲</td></tr>
+                                <tr><td>CEA23</td><td>75.56</td><td class="negative">-2.59▼</td></tr>
+                                <tr><td>CEA24</td><td>75.39</td><td class="negative">-2.79▼</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="source-info">来源: 上海环境能源交易所</div>
+                    </div>
+                </div>
+                <div class="tech-box">
+                    <h3 class="market-title">全国温室气体自愿减排交易行情 <span class="date">2025年6月30日</span></h3>
+                    <table class="market-table">
+                        <tbody>
+                            <tr><td>成交量 (吨)</td><td>600</td></tr>
+                            <tr><td>成交额 (元)</td><td>53100.00</td></tr>
+                            <tr><td>均价 (元/吨)</td><td>88.50</td></tr>
+                            <tr><td>涨跌幅 (%)</td><td class="positive">1.65</td></tr>
+                        </tbody>
+                    </table>
+                     <div class="source-info">来源: 北京绿色交易所</div>
+                </div>
+                <div class="tech-box k-line-box">
+                    <h3 >碳行情K线图</h3>
+                    <div id="trading-candlestick-chart" class="chart-container"></div>
+                </div>
+            </section>
+        </main>
+        <main id="page-decision" class="page-module">
+            <section class="left-panel">
+                <div class="tech-box">
+                    <h3>产业链碳足迹追溯</h3>
+                    <label for="chain-selector" style="flex-shrink: 0;">产业链:</label>
+                    <select id="chain-selector">
+                        <option value="">-- 请选择 --</option>
+                        <option value="steel-auto">电力 → 钢铁 → 汽车</option>
+                        <option value="cement-building" selected>电力 → 水泥 → 建筑</option>
+                        <option value="aluminum-auto-parts">电力 → 铝冶炼 → 汽车零部件</option>
+                        <option value="power-steel">电力 → 钢铁 (上游短链)</option>
+                        <option value="power-cement">电力 → 水泥 (上游短链)</option>
+                    </select>
+                    <div id="chain-graph-container" class="chart-container"></div>
+                </div>
+                <div class="tech-box">
+                    <div id="macc_chart" class="chart-container"></div>
+                </div>
+            </section>
+            <section class="center-panel">
+                <div class="tech-box" style="flex: 1;">
+                    <h3>碳排放流动桑基图</h3>
+                    <div id="sankey_chart" class="chart-container"></div>
+                </div>
+            </section>
+            <section class="right-panel">
+                <div class="tech-box" style="flex: 1;">
+                    <h3>宏观政策模拟</h3>
+
+                    <label for="tax-rate">碳税额度 (元/吨):</label>
+                    <input type="number" id="tax-rate" value="50">
+
+                    <label for="allowance-ratio">配额收紧比例 (%):</label>
+                    <input type="number" id="allowance-ratio" value="5">
+
+                    <label for="tech-standard">技术标准:</label>
+                    <select id="tech-standard">
+                        <option value="current">维持现状</option>
+                        <option value="advanced">推行先进标准</option>
+                        <option value="phaseout">强制淘汰落后</option>
+                    </select>
+
+                    <label for="revenue-recycling-ratio">税收返还率: <span id="revenue-recycling-ratio-value">0</span>%</label>
+                    <input type="range" id="revenue-recycling-ratio" min="0" max="100" value="0" step="10" oninput="document.getElementById('revenue-recycling-ratio-value').textContent = this.value;">
+                    <label for="policy-intensity">绿电补贴强度 (%):</label>
+                    <input type="number" id="policy-intensity" value="15">
+
+                    <button id="run-simulation-btn">开始模拟测算</button>
+                </div>
+
+                <div class="tech-box" style="flex: 1.5;">
+                    <h3>模拟结果概览</h3>
+                    <div class="results-overview">
+                        <div><p id="total-reduction-output" class="value">0万吨</p><p class="label">总减排量</p></div>
+                        <div><p id="affected-companies-output" class="value">0家</p><p class="label">影响企业</p></div>
+                        <div><p id="gdp-impact-output" class="value">0%</p><p class="label">GDP影响</p></div>
+                    </div>
+                    <h3 style="margin-top: 5px;">受影响企业清单</h3>
+                    <div id="affected-list-container">
+                        <table class="affected-list">
+                            <thead><tr><th>企业名称</th><th>成本变化(万元)</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const candlestickDates = ['2025-05-24', '2025-05-27', '2025-05-28', '2025-05-29', '2025-05-30', '2025-06-03', '2025-06-04', '2025-06-05', '2025-06-06', '2025-06-07', '2025-06-11', '2025-06-12', '2025-06-13', '2025-06-14', '2025-06-17', '2025-06-18', '2025-06-19', '2025-06-20', '2025-06-21', '2025-06-24', '2025-06-25', '2025-06-26', '2025-06-27', '2025-06-28', '2025-07-01', '2025-07-02'];
+    const candlestickData = [
+        [69.5, 69.4, 69.3, 69.6], [69.0, 68.8, 68.7, 69.2], [68.7, 68.6, 68.5, 68.8],
+        [68.4, 68.6, 68.4, 68.7], [68.5, 68.3, 68.2, 68.5], [67.8, 68.1, 67.7, 68.2],
+        [68.3, 68.1, 68.0, 68.4], [68.4, 67.8, 67.6, 68.5], [67.5, 67.8, 67.4, 67.9],
+        [67.9, 67.8, 67.7, 68.0], [68.0, 68.5, 67.9, 68.6], [68.6, 70.2, 68.5, 70.4],
+        [70.8, 70.9, 70.7, 71.0], [72.0, 69.5, 69.2, 72.5], [69.6, 71.8, 69.5, 72.0],
+        [72.6, 72.5, 72.4, 72.8], [72.4, 72.8, 72.3, 73.0], [72.9, 73.5, 72.6, 73.6],
+        [73.5, 74.5, 73.4, 74.6], [74.8, 75.5, 74.7, 75.8], [75.8, 76.2, 75.7, 76.3],
+        [76.2, 76.5, 76.1, 76.6], [77.0, 75.2, 75.0, 77.5], [74.8, 75.0, 74.7, 75.2],
+        [74.5, 73.5, 73.2, 74.8], [73.3, 73.0, 72.8, 73.4]
+    ];
+    let factorChart, panoramaCandlestickChart, pieChart, sectorLineChart, provinceBarChart;
+    let knowledgeGraphChart, arcGISView;
+    let mainTradingChart, tradingCandlestickChart;
+    let chainGraphChart, maccChart, sankeyChart;
+    let currentTopRiskCompany = null;
+    const navLinks = document.querySelectorAll('.sidebar .nav-link');
+    const pageModules = document.querySelectorAll('.page-module');
+    function createCandlestickChart(chartInstance, dates, kData) {
+        const option = {
+            backgroundColor: '#FFFFFF',
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'cross' },
+                formatter: (p) => {
+                    const d = p[0].data;
+                    const color = (d[2] - d[1] >= 0 ? '#ff4d4f' : '#52c41a');
+                    return `${p[0].name}<br/>
+                            开:${d[1]} 收:${d[2]} 低:${d[3]} 高:${d[4]}<br/>
+                            涨跌:<span style="color:${color};">${(d[2] - d[1]).toFixed(2)}</span>`;
+                }
+            },
+            xAxis: {
+                type: 'category',
+                data: dates,
+                axisLine: { onZero: false, lineStyle: { color: '#888' } },
+                axisTick: { show: true },
+                axisLabel: { color: '#666', fontSize: 10 }
+            },
+            yAxis: {
+                scale: true,
+                axisLine: { show: true, lineStyle: { color: '#888' } },
+                axisLabel: { formatter: v => v.toFixed(2), color: '#666' },
+                splitLine: { show: true, lineStyle: { color: '#E9E9E9', type: 'solid' } }
+            },
+            dataZoom: [{ type: 'inside', start: 30, end: 100 }],
+            grid: { left: '12%', right: '5%', bottom: '15%', top: '10%' },
+            series: [{
+                type: 'candlestick',
+                name: '碳价',
+                data: kData,
+                itemStyle: {
+                    color: '#ff4d4f',
+                    color0: '#52c41a',
+                    borderColor: '#ff4d4f',
+                    borderColor0: '#52c41a'
+                }
+            }]
+        };
+        chartInstance.setOption(option);
+    }
+    function switchPage(targetId) {
+        pageModules.forEach(page => page.classList.remove('active'));
+        const targetPage = document.getElementById(targetId);
+        if (targetPage) targetPage.classList.add('active');
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.dataset.target === targetId) link.classList.add('active');
+        });
+        const activeLink = document.querySelector(`.nav-link.active`);
+        if(activeLink) {
+             const pageTitle = activeLink.innerText.trim();
+             document.title = `${pageTitle} - 面向工业碳排放监管的决策支持系统`;
+        }
+        switch(targetId) {
+            case 'page-panorama':
+                if (!factorChart) initPanoramaCharts();
+                resizeAllCharts();
+                break;
+            case 'page-supervision':
+                if (!knowledgeGraphChart) initSupervisionCharts();
+                if (arcGISView) arcGISView.container.style.height = document.getElementById('anomaly-map-card').clientHeight + 'px';
+                resizeAllCharts();
+                break;
+            case 'page-trading':
+                if (!mainTradingChart) initTradingCharts();
+                resizeAllCharts();
+                break;
+            case 'page-decision':
+                if (!chainGraphChart) initDecisionCharts();
+                resizeAllCharts();
+                break;
+        }
+    }
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.dataset.target;
+            if(targetId) switchPage(targetId);
+        });
+    });
+    function initPanoramaCharts() {
+        const chartTextStyle = { color: '#c0d0f0', fontSize: 12 };
+        const chartLineStyle = { lineStyle: { color: '#2a3f60' } };
+        factorChart = echarts.init(document.getElementById('factor-chart'));
+        factorChart.setOption({
+            tooltip: { trigger: 'axis' },
+            legend: {
+                data: ['SUML', 'DNQ', 'MDN'],
+                textStyle: chartTextStyle,
+                top: '3%'
+            },
+            grid: {
+                left: '10%',
+                right: '20%',
+                bottom: '10%',
+                top: '20%',
+                backgroundColor: 'transparent',
+                show: true,
+                borderColor: 'transparent'
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: ['2015', '2016', '2017', '2018', '2019', '2020', '2021'],
+                axisLine: chartLineStyle,
+                axisLabel: { color: chartTextStyle.color }
+            },
+            yAxis: [
+                {
+                    type: 'value',
+                    name: 'SUML',
+                    position: 'left',
+                    scale: true,
+                    axisLine: { lineStyle: { color: '#00aaff' } },
+                    axisLabel: { color: '#00aaff' },
+                    splitLine: { show: false }
+                },
+                {
+                    type: 'value',
+                    name: 'DNQ',
+                    position: 'right',
+                    scale: true,
+                    axisLine: { lineStyle: { color: '#ff7d4e' } },
+                    axisLabel: { color: '#ff7d4e' },
+                    splitLine: { show: false }
+                },
+                {
+                    type: 'value',
+                    name: 'MDN',
+                    position: 'right',
+                    offset: 50,
+                    scale: true,
+                    axisLine: { lineStyle: { color: '#00ffcc' } },
+                    axisLabel: { color: '#00ffcc' },
+                    splitLine: { show: false }
+                }
+            ],
+            series: [
+                {
+                    name: 'SUML',
+                    type: 'line',
+                    smooth: true,
+                    yAxisIndex: 0,
+                    data: [435, 437, 439, 440, 442, 443, 445.5],
+                    itemStyle: { color: '#00aaff' },
+                    markArea: {
+                        silent: true,
+                        itemStyle: { color: 'transparent' },
+                        data: [[{ yAxis: '415' }, { yAxis: 'max' }]] }
+                },
+                {
+                    name: 'DNQ',
+                    type: 'line',
+                    smooth: true,
+                    yAxisIndex: 1,
+                    data: [472, 476, 478, 480, 483, 486, 490],
+                    itemStyle: { color: '#ff7d4e' },
+                    markArea: {
+                        itemStyle: { color: 'transparent' },
+                        data: [[{ yAxis: '470' }, { yAxis: '490' }]]}
+                    },
+                {
+                    name: 'MDN',
+                    type: 'line',
+                    smooth: true,
+                    yAxisIndex: 2,
+                    data: [737, 739, 741, 742, 743, 744, 746],
+                    itemStyle: { color: '#00ffcc' }
+                }
+            ]
+        });
+        panoramaCandlestickChart = echarts.init(document.getElementById('panorama-candlestick-chart'));
+        createCandlestickChart(panoramaCandlestickChart, candlestickDates, candlestickData);
+        pieChart = echarts.init(document.getElementById('pie-chart'));
+        pieChart.setOption({
+            tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c}%' },
+            legend: { orient: 'vertical', left: 'left', top: 'center', textStyle: chartTextStyle },
+            series: [{
+                name: '行业占比',
+                type: 'pie',
+                radius: ['45%', '70%'],
+                center: ['65%', '50%'],
+                avoidLabelOverlap: false,
+                label: { show: false },
+                emphasis: { label: { show: true, fontSize: '20', fontWeight: 'bold' } },
+                labelLine: { show: false },
+                data: [{ value: 66.7, name: '电力' }, { value: 15.0, name: '钢铁' }, { value: 10.3, name: '水泥' }, { value: 8.0, name: '铝冶炼' }],
+                color: ['#00aaff', '#00ffcc', '#f0c23c', '#ff7d4e'] }]
+        });
+    const sectorLineChart = echarts.init(document.getElementById('sector-line-chart'));
+    const rawSectorData = `China  62.458511  Domestic Aviation  2019
+    China    923.995146 Ground Transport   2019
+    China    4101.70551 Industry   2019
+    China    22.06669   International Aviation 2019
+    China    4569.015997    Power  2019
+    China    804.380392 Residential    2019
+    China    10461.55558    Total  2019
+    China    50.043748  Domestic Aviation  2020
+    China    808.94818  Ground Transport   2020
+    China    4283.742386    Industry   2020
+    China    10.95201   International Aviation 2020
+    China    4655.071934    Power  2020
+    China    808.110182 Residential    2020
+    China    10605.9164 Total  2020
+    China    56.981905  Domestic Aviation  2021
+    China    907.484108 Ground Transport   2021
+    China    4332.673916    Industry   2021
+    China    9.98835    International Aviation 2021
+    China    5076.468767    Power  2021
+    China    798.531482 Residential    2021
+    China    11172.14017    Total  2021
+    China    34.724914  Domestic Aviation  2022
+    China    875.069776 Ground Transport   2022
+    China    4177.361389    Industry   2022
+    China    8.342412   International Aviation 2022
+    China    5225.246343    Power  2022
+    China    816.243861 Residential    2022
+    China    11128.6463 Total  2022
+    China    70.357827  Domestic Aviation  2023
+    China    924.275893 Ground Transport   2023
+    China    4131.776177    Industry   2023
+    China    13.218609  International Aviation 2023
+    China    5480.924098    Power  2023
+    China    797.366258 Residential    2023
+    China    11404.70025    Total  2023
+    China    75.615831  Domestic Aviation  2024
+    China    920.413916 Ground Transport   2024
+    China    4024.451314    Industry   2024
+    China    18.51436   International Aviation 2024
+    China    5580.298584    Power  2024
+    China    799.221485 Residential    2024
+    China    11400.00111    Total  2024
+    China    24.249707  Domestic Aviation  2025
+    China    297.137943 Ground Transport   2025
+    China    1264.580483    Industry   2025
+    China    6.574272   International Aviation 2025
+    China    1721.628634    Power  2025
+    China    346.356134 Residential    2025
+    China    3653.952898    Total  2025`;
+    const lines = rawSectorData.trim().split('\n').filter(line => !line.trim().endsWith('2025'));
+    const years = [...new Set(lines.map(l => l.trim().split(/\s+/).pop()))].sort();
+    const sectorData = {};
+    lines.forEach(line => {
+        const parts = line.trim().split(/\s+/);
+        const value = parseFloat(parts[1]);
+        const year = parts.pop();
+        const sectorName = parts.slice(2).join(' ');
+        if (!sectorData[sectorName]) {
+            sectorData[sectorName] = {};
+        }
+        sectorData[sectorName][year] = value;
+    });
+
+    sectorLineChart.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: {
+            type: 'scroll',
+            top: '5%',
+            textStyle: chartTextStyle },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            top: '25%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: years,
+            axisLine: chartLineStyle,
+            axisLabel: { color: chartTextStyle.color }
+        },
+        yAxis: {
+            type: 'value',
+            axisLine: { show: true, ...chartLineStyle },
+            axisLabel: { color: chartTextStyle.color },
+            splitLine: chartLineStyle
+        },
+        series: Object.keys(sectorData).map(s => ({
+            name: s,
+            type: 'line',
+            smooth: true,
+            data: years.map(y => sectorData[s][y] || null),
+            emphasis: { focus: 'series' }
+        }))
+    });
+        provinceBarChart = echarts.init(document.getElementById('province-bar-chart'));
+        const rawProvinceData=`Anhui	133.306986\nBeijing	4.939046\nChongqing	47.386227\nFujian	122.710415\nGansu	42.657851\nGuangdong	201.308263\nGuangxi	151.728577\nGuizhou	95.108795\nHainan	7.18659\nHebei	522.074643\nHeilongjiang	32.225876\nHenan	141.463583\nHubei	286.029542\nHunan	101.981033\nInner Mongolia	110.897233\nJiangsu	390.4741\nJiangxi	95.484468\nJilin	44.114423\nLiaoning	204.447567\nNingxia	22.688205\nQinghai	19.999501\nShaanxi	67.631684\nShandong	353.918564\nShanghai	47.907858\nShanxi	157.927708\nSichuan	168.773872\nTianjin	65.185217\nTibet	2.20689\nXinjiang	64.974703\nYunnan	158.468625\nZhejiang	159.243265`;
+        let provinceData=rawProvinceData.trim().split('\n').map(l=>{const p=l.trim().split(/\s+/);
+            return{name:p[0],value:parseFloat(p[1])}}).sort((a,b)=>a.value-b.value);
+        provinceBarChart.setOption({
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            grid: {
+                left: '3%',
+                right: '4%',
+                top: '2%',
+                bottom: '2%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value',
+                boundaryGap: [0, 0.01],
+                axisLabel: { show: false },
+                splitLine: { show: false }
+            },
+            yAxis: {
+                type: 'category',
+                data: provinceData.map(item => item.name),
+                axisLine: chartLineStyle,
+                axisLabel: { color: chartTextStyle.color, fontSize: 10 }
+            },
+            dataZoom: [{
+                type: 'slider',
+                yAxisIndex: 0,
+                startValue: 0,
+                endValue: 14,
+                width: 15,
+                right: '5px',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                borderColor: 'transparent',
+                handleStyle: { color: '#00aaff' },
+                textStyle: { color: 'transparent' }
+            }],
+            series: [{
+                name: '工业碳排放 (Mt)',
+                type: 'bar',
+                data: provinceData.map(item => item.value),
+                itemStyle: {
+                    color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+                        {offset: 0, color: '#005bea' },
+                        { offset: 1, color: '#00c6fb' } ]) },
+                label: {
+                    show: true,
+                    position: 'right',
+                    color: '#fff',
+                    fontSize: 10,
+                    formatter: '{c}'
+                }
+            }]
+        });
+    }
+    function initSupervisionCharts() {
+        const graphContainer = document.getElementById('knowledge-graph-container');
+        if (graphContainer) {
+            knowledgeGraphChart = echarts.init(graphContainer, 'dark');
+            const nodes = [
+                { id: 'Baowu', name: '中国宝武', symbolSize: 80, category: 0 },
+                { id: 'CITIC', name: '中信泰富特钢', symbolSize: 70, category: 0 },
+                { id: 'HuaxinGroup', name: '华鑫钢铁', symbolSize: 50, category: 0 },
+                { id: 'Jinshenglan', name: '福建金盛兰', symbolSize: 50, category: 0 },
+                { id: 'HuaxinCement', name: '华新水泥', symbolSize: 90, category: 0 },
+                { id: 'GezhoubaCement', name: '葛洲坝水泥', symbolSize: 80, category: 0 },
+                { id: 'YadongCement', name: '亚洲水泥', symbolSize: 60, category: 0 },
+                { id: 'WaShiGroup', name: '娲石集团', symbolSize: 50, category: 0 },
+                { id: '武汉钢铁有限公司', name: '武汉钢铁有限公司', symbolSize: 60, category: 1 },
+                { id: '大冶特殊钢有限公司', name: '大冶特殊钢有限公司', symbolSize: 55, category: 1 },
+                { id: '大冶市新冶特钢有限责任公司', name: '大冶市新冶特钢有限责任公司', symbolSize: 45, category: 1 },
+                { id: '宝武集团鄂城钢铁有限公司', name: '宝武集团鄂城钢铁有限公司', symbolSize: 50, category: 1 },
+                { id: '大冶华鑫实业有限公司', name: '大冶华鑫实业有限公司', symbolSize: 40, category: 1},
+                { id: '湖北金盛兰冶金科技有限公司', name: '湖北金盛兰冶金科技有限公司', symbolSize: 40, category: 1},
+                { id: '广水华鑫冶金工业有限公司', name: '广水华鑫冶金工业有限公司', symbolSize: 40, category: 1},
+                { id: '湖北亚东水泥有限公司', name: '湖北亚东水泥有限公司', symbolSize: 40, category: 2 },
+                { id: '阳新娲石绿色建材有限公司', name: '阳新娲石绿色建材有限公司', symbolSize: 40, category: 2 },
+                { id: '华新水泥（阳新）有限公司', name: '华新水泥（阳新）有限公司', symbolSize: 40, category: 2 },
+                { id: '华新水泥（大冶）有限公司', name: '华新水泥（大冶）有限公司', symbolSize: 40, category: 2 },
+                { id: '葛洲坝当阳水泥有限公司', name: '葛洲坝当阳水泥有限公司', symbolSize: 40, category: 2 },
+                { id: '汉江丹江口铝业有限责任公司', name: '汉江丹江口铝业有限责任公司', symbolSize: 40, category: 3 },
+                { id: '潜江市正豪华盛铝电有限公司', name: '潜江市正豪华盛铝电有限公司', symbolSize: 40, category: 3 },
+            ];
+            const links = [
+                { source: 'Baowu', target: '武汉钢铁有限公司', value: '控股' },
+                { source: 'Baowu', target: '宝武集团鄂城钢铁有限公司', value: '控股' },
+                { source: 'CITIC', target: '大冶特殊钢有限公司', value: '控股' },
+                { source: 'CITIC', target: '大冶市新冶特钢有限责任公司', value: '关联' },
+                { source: 'HuaxinGroup', target: '大冶华鑫实业有限公司', value: '控股' },
+                { source: 'HuaxinGroup', target: '广水华鑫冶金工业有限公司', value: '控股' },
+                { source: 'Jinshenglan', target: '湖北金盛兰冶金科技有限公司', value: '控股' },
+                { source: 'HuaxinCement', target: '华新水泥（阳新）有限公司', value: '控股' },
+                { source: 'HuaxinCement', target: '华新水泥（大冶）有限公司', value: '控股' },
+                { source: 'GezhoubaCement', target: '葛洲坝当阳水泥有限公司', value: '控股' },
+                { source: 'YadongCement', target: '湖北亚东水泥有限公司', value: '控股' },
+                { source: 'WaShiGroup', target: '阳新娲石绿色建材有限公司', value: '控股' },
+            ];
+            const companyDetails = {
+                '武汉钢铁有限公司': {
+                    name: '武汉钢铁有限公司',
+                    layer1: `<ul><li><strong>统一社会信用代码:</strong> 91420100MA4KQ8JQX5</li><li><strong>所属集团/母公司:</strong> 中国宝武钢铁集团有限公司</li><li><strong>法定代表人:</strong> 刘宝军</li><li><strong>联系方式:</strong> 027-86801219</li><li><strong>企业地址:</strong> 湖北省武汉市青山区和平大道945号</li><li><strong>地理坐标 :</strong> 约 30.60° N, 114.38° E</li><li><strong>行业归属:</strong> 黑色金属冶炼和压延加工业</li><li><strong>主要产品:</strong> 粗钢、汽车板、硅钢、重轨</li></ul><h4>监管状态标签:</h4><p><span class="tag tag-grey">[重点控排单位]</span> <span class="tag tag-grey">[碳市场纳入企业]</span> <span class="tag tag-blue">[环保信用-良好]</span></p>`,
+                    layer2: `<div class="info-kpi-container"><div class="info-kpi-item"><div class="info-kpi-value">1.88</div><div class="info-kpi-label">吨钢碳排 (tCO₂/吨)</div></div><div class="info-kpi-item"><div class="info-kpi-value">605</div><div class="info-kpi-label">吨钢综合能耗 (kgce/吨)</div></div><div class="info-kpi-item"><div class="info-kpi-value">+2.1%</div><div class="info-kpi-label">最新数据偏差率</div></div></div><span class="disclaimer">[示例] 以上KPI数据为基于行业均值的示例，非真实数据。</span><p style="font-size:0.9em; margin-top:15px;"><strong>排放数据趋势(推测):</strong> 排放总量与生产计划高度关联，在执行“双碳”战略下，单位产品排放强度呈缓慢下降趋势。数据上报质量较高，与平台核验偏差小。</p>`,
+                    layer3: `<ul><li><strong>主要生产工艺:</strong> 长流程炼钢 (高炉-转炉)</li><li><strong>设计总产能:</strong> 粗钢产能超过1600万吨/年</li><li><strong>已采用节能低碳技术:</strong><ul><li>高炉煤气余热发电 (TRT)</li><li>焦炉干熄焦 (CDQ)</li><li>增加废钢使用比例、超低排放改造</li></ul></li></ul>` },
+                '大冶特殊钢有限公司': {
+                    name: '大冶特殊钢有限公司',
+                    layer1: `<ul><li><strong>统一社会信用代码:</strong> 91420000798750168P</li><li><strong>所属集团/母公司:</strong> 中信泰富特钢集团</li><li><strong>法定代表人:</strong> 蒋乔</li><li><strong>联系方式:</strong> 0714-6297888</li><li><strong>企业地址:</strong> 湖北省黄石市黄石大道316号</li><li><strong>行业归属:</strong> 黑色金属冶炼和压延加工业</li><li><strong>主要产品:</strong> 特种钢、轴承钢、汽车钢</li></ul><h4>监管状态标签:</h4><p><span class="tag tag-grey">[重点控排单位]</span> <span class="tag tag-grey">[碳市场纳入企业]</span> <span class="tag tag-green">[环保信用-诚信]</span></p>`,
+                    layer2: `<div class="info-kpi-container"><div class="info-kpi-item"><div class="info-kpi-value">1.35</div><div class="info-kpi-label">吨钢碳排 (tCO₂/吨)</div></div><div class="info-kpi-item"><div class="info-kpi-value">550</div><div class="info-kpi-label">吨钢综合能耗 (kgce/吨)</div></div><div class="info-kpi-item"><div class="info-kpi-value">+1.5%</div><div class="info-kpi-label">最新数据偏差率</div></div></div><span class="disclaimer">[示例] 以上KPI数据为基于工艺特点的示例，非真实数据。</span> <p style="font-size:0.9em; margin-top:15px;"><strong>排放数据趋势(推测):</strong> 因含电炉短流程工艺，单位碳排强度低于行业长流程平均水平。进行节能改造后，能耗与排放持续优化。</p>`,
+                    layer3: `<ul><li><strong>主要生产工艺:</strong> 长流程与短流程(电弧炉)相结合</li><li><strong>设计总产能:</strong> 特钢年产能约430万吨</li><li><strong>已采用节能低碳技术:</strong><ul><li>电炉节能改造</li><li>探索“氢能全氧燃烧技术”</li><li>余热回收系统</li></ul></li></ul>` },
+                '华新水泥（阳新）有限公司': {
+                    name: '华新水泥（阳新）有限公司',
+                    layer1: `<ul><li><strong>统一社会信用代码:</strong> 914202227570330000</li><li><strong>所属集团/母公司:</strong> 华新水泥股份有限公司</li><li><strong>法定代表人:</strong> 杨宏兵</li><li><strong>企业地址:</strong> 湖北省黄石市阳新县富池镇</li><li><strong>行业归属:</strong> 水泥行业</li><li><strong>主要产品:</strong> 水泥、熟料、骨料</li></ul><h4>监管状态标签:</h4><p><span class="tag tag-grey">[重点控排单位]</span> <span class="tag tag-grey">[碳市场纳入企业]</span> <span class="tag tag-green">[示例: 环保信用-诚信]</span></p>`,
+                    layer2: `<div class="info-kpi-container"><div class="info-kpi-item"><div class="info-kpi-value">0.83</div><div class="info-kpi-label">吨熟料碳排 (tCO₂/吨)</div></div><div class="info-kpi-item"><div class="info-kpi-value">98</div><div class="info-kpi-label">吨熟料综合能耗 (kgce/吨)</div></div><div class="info-kpi-item"><div class="info-kpi-value">-0.2%</div><div class="info-kpi-label">最新数据偏差率</div></div></div><span class="disclaimer">[示例] 以上KPI数据为基于集团优势的示例，非真实数据。</span><p style="font-size:0.9em; margin-top:15px;"><strong>排放数据趋势(推测):</strong> 广泛应用水泥窑协同处置废弃物技术，有效使用替代燃料，单位产品碳排和能耗均低于行业平均水平，数据质量极高。</p>`,
+                    layer3: `<ul><li><strong>主要生产工艺:</strong> 新型干法水泥生产工艺</li><li><strong>已采用节能低碳技术:</strong><ul><li>水泥窑余热发电(WHR)</li><li>水泥窑协同处置废弃物(Co-processing)</li><li>使用工业废渣作为生产原料</li></ul></li></ul>` }};
+            knowledgeGraphChart.setOption({
+                tooltip: { trigger: 'item', formatter: '{b}' },
+                legend: [{ data: ['集团', '钢铁', '水泥', '铝冶炼'],
+                    textStyle: { color: 'rgba(255,255,255,0.7)' } }],
+                series: [{
+                    name: '企业知识图谱',
+                    type: 'graph',
+                    layout: 'force',
+                    data: nodes,
+                    links: links,
+                    categories: [ { name: '集团' }, { name: '钢铁' }, { name: '水泥' }, { name: '铝冶炼' } ],
+                    roam: true,
+                    label: { show: true, position: 'right', formatter: '{b}', color: '#fff', fontSize: 12 },
+                    lineStyle: { color: 'source', curveness: 0.1 },
+                    force: { repulsion: 350, edgeLength: 150, gravity: 0.1 }}
+                ]}
+            );
+            knowledgeGraphChart.on('click', function (params) {
+                if (params.dataType === 'node') {
+                    const nodeName = params.name;
+                    const details = companyDetails[nodeName];
+                    const panel = document.getElementById('info-panel-content');
+                    if (panel && details) {
+                        let panelHtml = `<h2>${details.name}</h2><p style="font-size:0.9em;color:var(--text-secondary);">“碳征信”报告（监管视图）</p><h3>第一层：核心身份与状态</h3>${details.layer1}<h3>第二层：碳排放与绩效</h3>${details.layer2}<h3>第三层：生产与工艺</h3>${details.layer3 || '<ul><li>无更多公开信息</li></ul>'}<h3>第四层：政策与文档关联</h3><ul><li>受国家及湖北省关于本行业的超低排放、错峰生产、产能置换等宏观政策影响。</li></ul><h3>第五层：市场与供应链行为</h3><ul><li>碳市场交易行为（配额、交易量）及具体上下游客户为商业机密，无公开信息。</li></ul>`;
+                        panel.innerHTML = panelHtml.replace(/\[示例\]/g, '<i class="disclaimer">[示例]</i>');
+                    }
+                    else if (panel) {
+                        panel.innerHTML = `<div class="panel-placeholder"><p>您点击的是集团节点：</p><p style="font-size: 1.5em; color: var(--accent-cyan); margin: 10px 0;">${nodeName}</p><p style="font-size: 0.9em;">请点击具体的企业节点查看详细报告</p></div>`; } }
+            });
+        }
+        require(["esri/Map", "esri/views/MapView", "esri/layers/GraphicsLayer", "esri/Graphic", "esri/widgets/Search", "esri/widgets/Home", "esri/widgets/BasemapGallery", "esri/widgets/Expand"],
+        function(Map, MapView, GraphicsLayer, Graphic, Search, Home, BasemapGallery, Expand) {
+            const rawData = `国电长源第一发电有限责任公司	武汉市	电力	成功	永固力发电力有限公司	民主一街78号(六渡桥地铁站C2口步行450米)	114.281829,30.577413\n湖北能源东湖燃机热电有限公司	武汉市	电力	未找到	湖北能源东湖燃机	关南四路1号	114.426018,30.484222\n中韩(武汉)石油化工有限公司	武汉市	电力	成功	中韩(武汉)石油化工有限公司	八吉府街办事处化学工业区八吉府大街特一号	114.548524,30.633948\n武汉钢电股份有限公司	武汉市	电力	成功	武汉钢电股份有限公司	武钢集团公司火官村	114.472642,30.638860\n华能武汉发电有限责任公司	武汉市	电力	成功	武汉华康有限责任公司	红旗路1号	114.291571,30.790757\n武汉汉能电力发展有限公司	武汉市	电力	成功	中广核新能源汉能电力发展有限公司	沌口经济技术开发区沌阳大道544号	114.210024,30.468708\n武汉金凤凰纸业有限公司	武汉市	电力	成功	武汉市金凤凰纸业有限公司	金口街道金口街378号	114.137663,30.308913\n华电湖北发电有限公司武昌热电分公司	武汉市	电力	成功	华电湖北发电有限公司武昌热电分公司	积玉桥街办事处临江大道	114.316412,30.577206\n国能长源武汉青山热电有限公司	武汉市	电力	成功	国能长源武汉青山热电有限公司物资供应部	工人村苏家湾	114.435546,30.630208\n湖北华电西塞山发电有限公司	黄石市	电力	成功	湖北华电电力工程有限公司	王家墩特8号	115.186981,30.203888\n华电湖北发电有限公司黄石热电分公司	黄石市	电力	成功	中国华电集团有限公司(黄石大道)	黄石港区社区工作管理委员会黄石港区黄石大道942号湖北华电股份有限公司	115.082842,30.223349\n湖北西塞山发电有限公司	黄石市	电力	成功	西塞山区	西塞山区	115.110067,30.205114\n京能十堰热电有限公司	十堰市	电力	成功	京能十堰热电有限公司	石桥村	110.739799,32.684720\n宜昌市夷陵区中基热电有限公司	宜昌市	电力	成功	宜昌市夷陵区中基热电有限公司	夷陵经济开发区小溪塔装备制造产业园内	111.373256,30.799722\n湖北三宁化工股份有限公司	宜昌市	电力	成功	湖北三宁化工股份有限公司(168乡道)	沿江路9号	111.644383,30.369531\n华润电力(宜昌)有限公司	宜昌市	电力	成功	华润电力(宜昌)有限公司	猇亭大道116号	111.444747,30.496587\n湖北兴瑞硅材料有限公司	宜昌市	电力	成功	兴瑞硅材料有限公司	兴发集团宜昌精细化工园	111.412476,30.548592\n湖北祥临科技有限公司	宜昌市	电力	成功	湖北祥临科技有限公司	龙泉镇钟家畈创业园	111.456713,30.681369\n宜昌东阳光火力发电有限公司	宜昌市	电力	成功	东阳光火电	枝城镇楼子河村	111.496745,30.325843\n湖北长江汇丰纸业有限公司	宜昌市	电力	成功	湖北长江汇丰纸业有限公司	[]	111.441201,30.460957\n湖北金庄科技再生资源有限公司	宜昌市	电力	成功	湖北金庄科技再生资源有限公司	玉阳街道玉阳办事处三里港村六组	111.836523,30.791634\n博拉经纬纤维有限公司	襄阳市	电力	成功	博拉经纬纤维有限公司	太平店镇严家湾	111.815109,32.165859\n湖北金环新材料科技有限公司	襄阳市	电力	成功	湖北金环新材料科技有限公司	太平店镇湖北化纤厂	111.829397,32.152933\n襄阳华润综合能源有限公司	襄阳市	电力	成功	襄阳华润综合能源有限公司	富康大道23号	112.179074,32.118788\n湖北华电襄阳燃机热电有限公司	襄阳市	电力	成功	湖北华电襄阳燃机热电有限公司	中航大道	112.091648,32.073834\n中盐枣阳盐化有限公司	襄阳市	电力	成功	中盐枣阳盐化	兴隆镇中心小学西南(星火路南)	112.900559,32.041767\n湖北华电襄阳发电有限公司	襄阳市	电力	成功	华电湖北发电有限公司电力工程分公司襄阳项目部检修公寓	临江路6号	112.169938,31.919911\n龙佰襄阳钛业有限公司	襄阳市	电力	成功	南漳县龙佰襄阳钛业有限公司	城关镇久龙大道1号	111.845603,31.733986\n湖北能源集团襄阳宜城发电有限公司	襄阳市	电力	成功	襄阳能源集团有限公司	松鹤路与长虹路交叉口西北40米	112.135413,32.047433\n湖北能源集团鄂州发电有限公司	鄂州市	电力	未找到	鄂州电厂湖北电建生活区	葛洪大道28-3号	114.663294,30.544149\n国家电投集团荆门绿动能源有限公司	荆门市	电力	成功	国家电投集团荆门绿动能源有限公司	科荟路36号	112.224075,30.924325\n华能荆门热电有限责任公司	荆门市	电力	成功	华能荆门热电有限责任公司	东宝工业园区荆东大道99号	112.254765,31.055734\n国能长源荆门发电有限公司	荆门市	电力	成功	国能长源荆门发电有限公司	白庙路165号	112.236974,31.028646\n湖北双环科技股份有限公司	孝感市	电力	成功	双环科技	[]	113.705931,30.922418\n国电长源汉川第一发电有限公司	孝感市	电力	成功	国能长源汉川发电有限公司	东方红村村委会东侧140米	113.919525,30.663725\n金凤凰纸业(孝感)有限公司	孝感市	电力	成功	金凤凰纸业	孝武大道192号	113.994370,30.832468\n湖北蓝天盐化有限公司	孝感市	电力	成功	湖北蓝天盐化有限公司	云化路特1号	113.729104,30.947379\n中盐东兴云梦制盐有限公司	孝感市	电力	成功	中盐东兴云梦制盐有限公司	南环路100号	113.741340,31.011478\n华能应城热电有限责任公司	孝感市	电力	成功	华能应城热电有限责任公司	[]	113.666214,30.912430\n湖北长舟盐化有限公司	孝感市	电力	成功	湖北长舟盐化有限公司	东马坊枣林路驿东社区	113.712730,30.918628\n应城市新都化工有限责任公司	孝感市	电力	成功	应城市新都化工有限责任公司	四里棚刘杨村虾耙湾123号	113.600027,30.934947\n国能长源汉川发电有限公司	孝感市	电力	成功	国能长源汉川发电有限公司	东方红村村委会东侧140米	113.919525,30.663725\n汉川市福星热电有限公司	孝感市	电力	成功	福星热电有限公司	沉湖镇福星街1号	113.523346,30.488680\n楚源高新科技集团股份有限公司	荆州市	电力	成功	楚源高新科技集团股份有限公司	张城垸高新技术园区楚天大道68号	112.448953,29.740263\n湖北荣成再生科技有限公司	荆州市	电力	成功	湖北荣成再生科技有限公司	临港工业园疏港大道中段	111.598180,30.255808\n监利市景和兴新产业投资有限公司	荆州市	电力	成功	和兴公寓	共青路与太岳路交叉口南60米	112.230558,30.329886\n安道麦股份有限公司	荆州市	电力	成功	安道麦股份有限公司	联合街道北京东路93号	112.296356,30.280966\n山鹰华中纸业有限公司	荆州市	电力	成功	山鹰华中纸业有限公司	杨家厂镇友谊东路(富丽家园南侧)	112.290478,30.040373\n湖北中集超纤科技有限公司	荆州市	电力	成功	湖北中集超纤科技有限公司	白螺镇工农村	113.275557,29.623131\n湖北华电江陵发电有限公司	荆州市	电力	成功	湖北能源集团江陵发电有限公司	华电路	112.323670,30.088847\n国能长源荆州热电有限公司	荆州市	电力	成功	国能长源荆州热电有限公司	荆沙大道18号	112.314300,30.293379\n黄冈大别山发电有限责任公司	黄冈市	电力	成功	黄冈大别山检测认证有限公司	经济开发区黄州大道128号	114.887258,30.446570\n赤壁晨力纸业有限公司	咸宁市	电力	成功	赤壁晨力纸业	纯川大道228号	113.866210,29.724100\n华润电力湖北有限公司	咸宁市	电力	成功	华润电力湖北有限公司	经济开发区华润路99号	113.877854,29.659625\n国能长源随州发电有限公司	随州市	电力	成功	国家能源集团长源随州发电有限公司	淅河镇樊家冲村	113.530694,31.641976\n湖北雅都恒兴纸业有限公司	随州市	电力	成功	湖北雅都恒兴纸业有限公司	办事处沿河大道特1号	114.009720,31.601691\n华润电力(仙桃)有限公司	仙桃市	电力	成功	华润电力(仙桃)有限公司	东城大道99号	113.572576,30.366463\n中石化江汉盐化工湖北有限公司	潜江市	电力	成功	中石化江汉盐化工湖北有限公司	红旗路与053乡道交叉口东北100米	112.803443,30.503843\n潜江市正豪华盛铝电有限公司	潜江市	电力	未找到	正豪华盛铝厂	张金镇齐力路1号	112.597624,30.201722\n潜江瀚达热电有限公司	潜江市	电力	成功	潜江瀚达热电有限公司	泽口街道办事处明泽路99号	112.894712,30.483188\n武汉钢铁有限公司	武汉市	炼铁/炼钢	成功	武汉钢铁有限公司	环厂西路15号	114.439502,30.631996\n大冶特殊钢有限公司	黄石市	炼铁/炼钢	成功	大冶特殊钢有限公司	经五路与黄石大道交叉口北440米	115.147808,30.202055\n大冶市新冶特钢有限责任公司	黄石市	炼铁/炼钢	成功	新冶特钢公司	矿冶大道139号	114.938344,30.064538\n大冶华鑫实业有限公司	黄石市	炼铁/炼钢	成功	大冶华鑫实业有限公司	金湖街道办金株大道69号	114.930935,30.066959\n宝武集团鄂城钢铁有限公司	鄂州市	炼铁/炼钢	成功	宝武集团鄂城钢铁有限公司-北区	武昌大道215号鄂钢办公大楼	114.870324,30.401020\n湖北金盛兰金科技有限公司	咸宁市	炼铁/炼钢	成功	湖北金杏科技有限公司	咸安区经济技术开发区长江产业园旗鼓大道38号	114.330306,29.883876\n广水华鑫冶金工业有限公司	随州市	炼铁/炼钢	成功	广水华鑫公司	杨寨镇发展大道88号	114.010076,31.497902\n湖北亚东水泥有限公司	黄冈市	水泥	成功	亚东水泥有限公司	冶金大道与松柏路交叉口东南180米	114.430334,30.624126\n阳新娲石绿色建材有限公司	黄石市	水泥	成功	阳新娲石绿色建材有限公司	湖北尚川固废处置有限公司东南侧220米	115.387183,29.912482\n阳新娲石水泥有限公司	黄石市	水泥	成功	娲石水泥	富池镇老渡口	115.395936,29.906423\n华新水泥（阳新）有限公司	黄石市	水泥	成功	华新水泥(阳新)有限公司	韦源口镇华新路1号	115.279319,30.111642\n华新水泥（黄石）有限公司	黄石市	水泥	成功	华新水泥股份有限公司黄石分公司	社区工作管理委员会沿湖路503号	115.063049,30.193525\n华新水泥（大冶）有限公司	黄石市	水泥	成功	华新水泥(大冶)有限公司	还地桥镇屏山新村小区68号	114.864081,30.201536\n大冶尖峰水泥有限公司	黄石市	水泥	成功	大冶尖峰水泥有限公司	青山村石家庄湾84号	114.790840,30.156590\n华新金龙水泥（郧县）有限公司	十堰市	水泥	成功	华新金龙水泥(郧县)有限公司	039乡道与037乡道交叉口东500米	110.846942,32.750251\n湖北武当水泥有限公司	十堰市	水泥	成功	湖北武当水泥有限公司	武当路东50米	110.413236,33.021877\n竹溪瑞城水泥有限公司	十堰市	水泥	成功	竹溪瑞城水泥有限公司	水坪镇金铜岭工业园	109.766652,32.313930\n华新水泥（房县）有限公司	十堰市	水泥	成功	华新水泥(房县)有限公司	化龙堰镇高川村一组	110.565988,32.035244\n宜昌花林水泥有限公司	宜昌市	水泥	成功	宜昌花林水泥有限公司	昌盛路	111.628387,30.923226\n葛洲坝当阳水泥有限公司	宜昌市	水泥	成功	葛洲坝当阳水泥有限公司	玉泉街道玉泉办事处三桥村	111.653218,30.863347\n葛洲坝兴山水泥有限公司	宜昌市	水泥	成功	葛洲坝兴山水泥有限公司	G42沪蓉高速入口与保兴公路交叉口西500米	110.751734,31.176075\n华新水泥（秭归）有限公司	宜昌市	水泥	成功	华新水泥(秭归)有限公司	郭家坝镇郭家坝村	110.714444,30.918392\n华新水泥（长阳）有限公司	宜昌市	水泥	成功	华新水泥(长阳)有限公司	长阳大道与金石路交叉口西440米	111.236200,30.517344\n宜昌骏王集团水泥有限公司	宜昌市	水泥	成功	宜昌骏王集团水泥有限公司	渔洋关镇桥河5组	111.076285,30.201300\n华新水泥（宜昌）有限公司	宜昌市	水泥	成功	华新水泥(宜昌)有限公司	枝城镇华新路1号	111.498744,30.312567\n华新水泥（襄阳）有限公司	襄阳市	水泥	成功	华新水泥襄阳襄城有限公司	余家湖经济技术开发区大舜大道	112.155752,31.893778\n湖北谷城泰隆水泥有限公司	襄阳市	水泥	成功	湖北谷城泰隆水泥有限公司	G316(福兰线)	111.453031,32.318509\n葛洲坝老河口水泥有限公司	襄阳市	水泥	成功	葛洲坝水泥老河口水泥有限公司	洪山咀镇葛洲坝	111.666558,32.454819\n葛洲坝宜城水泥有限公司	襄阳市	水泥	成功	葛洲坝宜城水泥有限公司	[]	112.430018,31.736276\n湖北世纪新峰科技集团有限公司	荆门市	水泥	成功	湖北美辰环保股份有限公司	高新路6号	112.209025,30.929775\n葛洲坝荆门水泥有限公司	荆门市	水泥	成功	葛洲坝荆门水泥有限公司	子陵铺镇建泉村	112.195726,31.145875\n湖北京兰水泥集团有限公司	荆门市	水泥	成功	湖北京兰水泥集团有限公司	永兴镇盘堰村	113.186575,30.952124\n葛洲坝钟祥水泥有限公司	荆门市	水泥	成功	双河镇葛洲坝钟祥水泥有限公司	钟双大道88号	112.282794,31.277888\n湖北白兆山水泥有限公司	孝感市	水泥	成功	白兆山水泥	沈新大道1号	113.903680,30.993750\n葛洲坝松滋水泥有限公司	荆州市	水泥	成功	葛洲坝松滋水泥有限公司	刘家场镇龙河大道黄土坪	111.505910,30.071587\n黄冈亚东水泥有限公司	黄冈市	水泥	成功	武穴亚东水泥	田镇新街13号	115.429775,29.910975\n华新水泥（武穴）有限公司	黄冈市	水泥	成功	华新水泥	田镇上郭村华新路1号	115.451849,29.892422\n葛洲坝嘉鱼水泥有限公司	咸宁市	水泥	成功	葛洲坝嘉鱼水泥有限公司	035县道附近	113.807614,29.863136\n崇阳县昌华实业有限公司	咸宁市	水泥	成功	崇阳县昌华实业有限公司	天城镇城北六公里	114.018659,29.568958\n华新水泥（赤壁）有限公司	咸宁市	水泥	成功	华新水泥赤壁公司	中伙铺镇南山寺村华新路	113.991735,29.740296\n华新水泥（恩施）有限公司	恩施土家族苗族自治州	水泥	成功	华新水泥(恩施)有限公司	龙麟宫路198号	109.440636,30.265855\n恩施州腾龙水泥有限责任公司	恩施土家族苗族自治州	水泥	成功	腾龙水泥有限责任公司	芭蕉侗族乡天桥村沙子坡组8号	109.477765,30.182818\n建始县泰丰水泥有限责任公司	恩施土家族苗族自治州	水泥	成功	建始县泰丰水泥有限责任公司	长梁乡蒋家湾	109.744833,30.639123\n来凤县金凤建材工业有限责任公司	恩施土家族苗族自治州	水泥	成功	金凤水泥厂区	045乡道西150米	109.385762,29.505299\n华新水泥（鹤峰）民族建材有限公司	恩施土家族苗族自治州	水泥	成功	华新水泥(恩施)有限公司	龙麟宫路198号	109.440636,30.265855\n赤壁市丹阁铝业有限责任公司	咸宁市	铝冶炼	成功	赤壁市金新再生资源有限责任公司	蒲圻办事处斋公岭228号	113.866415,29.721696\n潜江正豪华盛铝电有限公司	潜江市	铝冶炼	未找到	正豪华盛铝厂	张金镇齐力路1号	112.597624,30.201722`;
+        function processData(rawData) {
+            const lines = rawData.trim().split('\n');
+
+            let companies = lines.map(line => {
+                const parts = line.split('\t');
+                if (parts.length < 7) return null;
+                const coords = parts[6].split(',');
+                if (coords.length < 2 || !coords[0] || !coords[1]) return null;
+                return {
+                    originalName: parts[0],
+                    city: parts[1],
+                    industry: parts[2],
+                    poiName: parts[4],
+                    poiAddress: parts[5] || '无',
+                    lat: parseFloat(coords[1]),
+                    lng: parseFloat(coords[0])
+                };
+            }).filter(company => company && !isNaN(company.lat) && !isNaN(company.lng));
+
+            const totalCompanies = companies.length;
+            const redCount = Math.ceil(totalCompanies * 0.05);
+            const yellowCount = Math.ceil(totalCompanies * 0.15);
+            let statuses = [];
+
+            for (let i = 0; i < redCount; i++) statuses.push('red');
+            for (let i = 0; i < yellowCount; i++) statuses.push('yellow');
+            while (statuses.length < totalCompanies) statuses.push('green');
+
+            for (let i = statuses.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [statuses[i], statuses[j]] = [statuses[j], statuses[i]];
+            }
+
+            companies.forEach((company, index) => {
+                company.status = statuses[index];
+                let deviationNum = 0;
+                switch (company.status) {
+                    case 'red':
+                        company.statusText = '严重偏差 (高风险)';
+                        deviationNum = parseFloat((Math.random() * 20 + 15).toFixed(1));
+                        company.deviation = `+${deviationNum}%`;
+                        break;
+                    case 'yellow':
+                        company.statusText = '轻微偏差 (需关注)';
+                        deviationNum = parseFloat((Math.random() * 10 + 5).toFixed(1));
+                        company.deviation = `+${deviationNum}%`;
+                        break;
+                    default:
+                        company.statusText = '数据匹配良好';
+                        deviationNum = parseFloat((Math.random() * 4 - 2).toFixed(1));
+                        company.deviation = `${deviationNum}%`;
+                        break;
+                }
+                company.deviationValue = deviationNum;
+            });
+
+            return companies;
+        }
+        function updateDashboardData(companyData) {
+            const highRiskCompanies = companyData.filter(c => c.status === 'red');
+            const midRiskCompanies = companyData.filter(c => c.status === 'yellow');
+            const allRiskCompanies = [...highRiskCompanies, ...midRiskCompanies];
+            const assignTaskBtn = document.getElementById('assign-task-btn');
+            document.getElementById('kpi-company-count').textContent = companyData.length;
+            document.getElementById('kpi-high-risk').textContent = highRiskCompanies.length;
+            const warningStreamContent = document.getElementById('warning-stream-content');
+            warningStreamContent.innerHTML = '';
+            const latestWarnings = allRiskCompanies.slice(0, 5);
+            if (latestWarnings.length === 0) {
+                warningStreamContent.innerHTML = `<div class="warning-item">本月暂无高风险预警</div>`;
+            } else {
+                latestWarnings.forEach(c => {
+                    const reason = c.status === 'red' ? '排放严重偏高' : '数据存在偏差';
+                    warningStreamContent.innerHTML += `<div class="warning-item">${reason}: <span>${c.originalName}</span></div>`;
+                });
+            }
+            const emissionTableBody = document.querySelector('#emission-table tbody');
+            emissionTableBody.innerHTML = '';
+            const latestEmissions = allRiskCompanies.slice(0, 5);
+            latestEmissions.forEach(c => {
+                const deviationClass = c.status === 'red' ? 'deviation-up' : 'deviation-mid';
+                emissionTableBody.innerHTML += `<tr><td>${c.originalName}</td><td>${c.industry}</td><td class="${deviationClass}">${c.deviation}</td></tr>`;
+            });
+            const taskTableBody = document.querySelector('#task-table tbody');
+            taskTableBody.innerHTML = '';
+            let tasks = [];
+            let taskIdCounter = 1;
+            const departments = ['环保一组', '环保二组', '技术支持部', '环保三组'];
+            allRiskCompanies.forEach((c, i) => {
+                tasks.push({
+                    id: `RW202507${String(taskIdCounter++).padStart(2, '0')}`,
+                    companyName: c.originalName,
+                    riskDescription: c.status === 'red' ? '排放数据突增' : '偏差率过大',
+                    department: departments[i % departments.length],
+                    status: c.status === 'red' ? 'in-progress' : 'pending'
+                });
+            });
+            const completedChecks = companyData.filter(c => c.status === 'green').slice(0, 10);
+            completedChecks.forEach(c => {
+                tasks.push({
+                    id: `RW202506${String(20 + taskIdCounter++).padStart(2, '0')}`,
+                    companyName: c.originalName,
+                    riskDescription: '历史数据核查',
+                    department: departments[taskIdCounter % departments.length],
+                    status: 'completed'
+                });
+            });
+            tasks.forEach(task => {
+                const statusMap = { 'in-progress': '核查中', 'pending': '待处理', 'completed': '已完成' };
+                taskTableBody.innerHTML += `<tr><td>${task.id}</td><td title="${task.companyName}">${task.companyName}</td><td>${task.riskDescription}</td><td>${task.department}</td><td><span class="status-tag status-${task.status}">${statusMap[task.status]}</span></td></tr>`;
+            });
+            document.getElementById('kpi-pending-tasks').textContent = tasks.filter(t => t.status === 'pending' || t.status === 'in-progress').length;
+
+            const rootCauseContent = document.getElementById('root-cause-content-wrapper');
+            if (highRiskCompanies.length > 0) {
+                const topRiskCompany = highRiskCompanies.sort((a, b) => b.deviationValue - a.deviationValue)[0];
+
+                currentTopRiskCompany = topRiskCompany;
+
+                document.getElementById('root-cause-title').textContent = `智能根因分析 (${topRiskCompany.originalName.substring(0, 10)}...)`;
+                rootCauseContent.innerHTML = `
+                    <ul class="analysis-list">
+                        <li><strong>风险等级:</strong> <span style="color:var(--accent-red); font-weight:bold;">高风险</span></li>
+                        <li><strong>主要问题:</strong> 排放数据突增，偏差率 ${topRiskCompany.deviation}</li>
+                        <li><strong>遥感证据:</strong> 热红外影像增强，疑似夜间生产。</li>
+                        <li><strong>图谱关联:</strong> 上游供应商近期满产，可能导致本企业增产。</li>
+                        <li><strong>核查建议:</strong> 立即启动现场核查程序。</li>
+                    </ul>
+                `;
+                viewTaskBtn.classList.remove('hidden');
+            } else {
+                currentTopRiskCompany = null;
+                document.getElementById('root-cause-title').textContent = '智能根因分析';
+                rootCauseContent.innerHTML = `<p>当前无高风险企业，无需进行根因分析。</p>`;
+                viewTaskBtn.classList.add('hidden');
+            }
+        }
+            const companyData=processData(rawData);updateDashboardData(companyData);
+            const symbols={
+                red:{
+                    type:"picture-marker",
+                    url:`data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDIgMiAyMmgyMnoiIGZpbGw9IiNkOTUzNGYiLz48cmVjdCB4PSIxMSIgeT0iOSIgd2lkdGg9IjIiIGhlaWdodD0iNiIgZmlsbD0id2hpdGUiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjE4IiByPSIxIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==`,
+                    width:"28px",
+                    height:"28px"
+                },
+                yellow:{
+                    type:"picture-marker",
+                    url:`data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDIgMiAyMmgyMnoiIGZpbGw9IiNmMGFkNGUiLz48cmVjdCB4PSIxMSIgeT0iOSIgd2lkdGg9IjIiIGhlaWdodD0iNiIgZmlsbD0iYmxhY2siLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjE4IiByPSIxIiBmaWxsPSJibGFjayIvPjwvc3ZnPg==`,
+                    width:"28px",
+                    height:"28px"
+                },
+                green:{
+                    type:"picture-marker",
+                    url:`data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzVjYjg1YyIgZD0iTTEyIDBDNy4yIDAgNCAzLjIgNCA4YzAgNS42IDggMTYgOCAxNnM4LTEwLjQgOC0xNmMwLTQuOC0zLjItOC04LTh6bTAgMTJjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNHoiLz48L3N2Zz4=`,
+                    width:"28px",
+                    height:"28px"
+                }
+            };
+            const popupTemplate={
+                title:"{originalName}",
+                content:`<b>所属城市:</b> {city}<br><b>所属行业:</b> {industry}<br><b>状态:</b> <span class="popup-status-{status}">{statusText}</span><br><hr><small><b>POI 地址:</b> {poiAddress}</small>`};
+            const graphicsLayer=new GraphicsLayer();
+            graphicsLayer.addMany(companyData.map(p=>new Graphic({geometry:{
+                type:"point",
+                    longitude:p.lng,
+                    latitude:p.lat},
+                attributes:p,symbol:symbols[p.status],
+                popupTemplate:popupTemplate})));
+            const map=new Map({
+                basemap:"dark-gray-vector",
+                layers:[graphicsLayer]}
+            );
+            arcGISView=new MapView({
+                container:"viewDiv",
+                map:map,
+                center:[113.5,31.5],
+                zoom:7});
+            arcGISView.ui.add(new Home({view:arcGISView}),"top-left");
+            const legendContent=`<h4>企业风险等级</h4><div class="legend-item"><img src="${symbols.red.url}" class="legend-icon"><span>严重偏差 (高风险)</span></div><div class="legend-item"><img src="${symbols.yellow.url}" class="legend-icon"><span>轻微偏差 (需关注)</span></div><div class="legend-item"><img src="${symbols.green.url}" class="legend-icon"><span>数据匹配良好</span></div>`;
+            const legendContainer=document.createElement("div");legendContainer.id="legendDiv";legendContainer.innerHTML=legendContent;arcGISView.ui.add(new Expand({content:legendContainer,view:arcGISView,expanded:true}),"bottom-right");
+            arcGISView.ui.add(new Expand({content:new BasemapGallery({view:arcGISView}),view:arcGISView,group:"top-left"}),{position:"top-left"});arcGISView.ui.add(new Search({view:arcGISView}),"top-right");
+        });
+    }
+    function initTradingCharts() {
+        mainTradingChart = echarts.init(document.getElementById('main-trading-chart'));
+        tradingCandlestickChart = echarts.init(document.getElementById('trading-candlestick-chart'));
+        const tradingData = (()=>{let d=[],dt=new Date(),p=85.0;for(let i=19;i>=0;i--){let cDt=new Date();cDt.setDate(dt.getDate()-i);if(cDt.getDay()===0||cDt.getDay()===6)continue;p+=(Math.random()-0.5)*2.5;p=Math.max(70,p);d.push({date:`${cDt.getFullYear()}-${String(cDt.getMonth()+1).padStart(2,'0')}-${String(cDt.getDate()).padStart(2,'0')}`,price:parseFloat(p.toFixed(2)),volume:parseInt(Math.random()<.7?Math.random()*8e4:2e5+Math.random()*5e5)})}return d})();
+        mainTradingChart.setOption({
+            backgroundColor:'transparent',tooltip:{trigger:'axis',axisPointer:{type:'cross'},formatter:p=>{let pr=p.find(i=>i.seriesName==='成交均价'),v=p.find(i=>i.seriesName==='成交量');if(!pr||!v)return'';return`<strong>${pr.axisValue}</strong><br/>成交均价: <span style="color:${pr.color};">${pr.value.toFixed(2)}</span> 元/吨<br/>成交量: <span style="color:${v.color};">${v.value.toLocaleString()}</span> 吨<br/>成交额: ${(pr.value*v.value/1e4).toFixed(2)} 万元`}},grid:{left:'8%',right:'8%',bottom:'10%',top:'18%'},legend:{data:['成交均价','成交量'],right:20,top:10,textStyle:{color:'var(--text-color)'}},
+            xAxis:[{
+                type:'category',
+                data:tradingData.map(i=>i.date),
+                axisPointer:{type:'shadow'},
+                axisLine:{lineStyle:{color:'#ADD8E6'}},
+                axisLabel:{color:'#ADD8E6'}
+            }],
+            yAxis:[{
+                type:'value',
+                name:'成交量(吨)',
+                nameTextStyle:{
+                    color:'#ADD8E6',
+                    padding:[0,0,0,30]},
+                axisLabel:{
+                    color:'#ADD8E6',formatter:v=>v/1e3+'k'},
+                axisLine: {
+                    show:true,
+                    lineStyle:{color:'#ADD8E6'}},
+                splitLine:{
+                    show:false}}, {
+                type:'value',
+                name:'价格(元/吨)',
+                nameTextStyle:{
+                    color:'var(--text-color)',
+                    padding:[0,30,0,0]},
+                axisLabel:{
+                    color:'var(--text-color)'},
+                axisLine:{
+                    show:true,
+                    lineStyle:{
+                        color:'var(--text-color)'}},
+                splitLine:{
+                    lineStyle:{
+                        type:'dashed',
+                        color:'rgba(131, 146, 162, 0.2)'}
+                }
+            }],
+            series:[{
+                name:'成交均价',
+                type:'line',
+                yAxisIndex:1,
+                smooth:true,
+                data:tradingData.map(i=>i.price),
+                itemStyle:{
+                    color:'var(--negative-color)'},
+                lineStyle:{width:3},
+                markPoint:{
+                    data:[{type:'max',name:'最高价'},
+                        {type:'min',name:'最低价'}],
+                    label:{color:'#FFFFFF'},
+                    itemStyle:{color:'#fac858'}}},
+                {
+                    name:'成交量',
+                    type:'bar',
+                    yAxisIndex:0,
+                    barWidth:'60%',
+                    data:tradingData.map(i=>i.volume),
+                    itemStyle:{
+                        color:new echarts.graphic.LinearGradient(0,0,0,1,[
+                            {offset:0,color:'rgba(250,200,88,0.8)'},
+                            {offset:1,color:'rgba(250,200,88,0.3)'}])
+                    }
+                }]
+        });
+        createCandlestickChart(tradingCandlestickChart, candlestickDates, candlestickData);
+    }
+    function initDecisionCharts() {
+        const companyRawData=`原始企业名称	所属城市	所属行业\n国电长源第一发电有限责任公司	武汉市	电力\n湖北能源东湖燃机热电有限公司	武汉市	电力\n中韩(武汉)石油化工有限公司	武汉市	电力\n武汉钢电股份有限公司	武汉市	电力\n华能武汉发电有限责任公司	武汉市	电力\n武汉汉能电力发展有限公司	武汉市	电力\n武汉金凤凰纸业有限公司	武汉市	电力\n华电湖北发电有限公司武昌热电分公司	武汉市	电力\n国能长源武汉青山热电有限公司	武汉市	电力\n湖北华电西塞山发电有限公司	黄石市	电力\n华电湖北发电有限公司黄石热电分公司	黄石市	电力\n湖北西塞山发电有限公司	黄石市	电力\n京能十堰热电有限公司	十堰市	电力\n宜昌市夷陵区中基热电有限公司	宜昌市	电力\n湖北三宁化工股份有限公司	宜昌市	电力\n华润电力(宜昌)有限公司	宜昌市	电力\n湖北兴瑞硅材料有限公司	宜昌市	电力\n湖北祥临科技有限公司	宜昌市	电力\n宜昌东阳光火力发电有限公司	宜昌市	电力\n湖北长江汇丰纸业有限公司	宜昌市	电力\n湖北金庄科技再生资源有限公司	宜昌市	电力\n博拉经纬纤维有限公司	襄阳市	电力\n湖北金环新材料科技有限公司	襄阳市	电力\n襄阳华润综合能源有限公司	襄阳市	电力\n湖北华电襄阳燃机热电有限公司	襄阳市	电力\n中盐枣阳盐化有限公司	襄阳市	电力\n湖北华电襄阳发电有限公司	襄阳市	电力\n龙佰襄阳钛业有限公司	襄阳市	电力\n湖北能源集团襄阳宜城发电有限公司	襄阳市	电力\n湖北能源集团鄂州发电有限公司	鄂州市	电力\n国家电投集团荆门绿动能源有限公司	荆门市	电力\n华能荆门热电有限责任公司	荆门市	电力\n国能长源荆门发电有限公司	荆门市	电力\n湖北双环科技股份有限公司	孝感市	电力\n国电长源汉川第一发电有限公司	孝感市	电力\n金凤凰纸业(孝感)有限公司	孝感市	电力\n湖北蓝天盐化有限公司	孝感市	电力\n中盐东兴云梦制盐有限公司	孝感市	电力\n华能应城热电有限责任公司	孝感市	电力\n湖北长舟盐化有限公司	孝感市	电力\n应城市新都化工有限责任公司	孝感市	电力\n国能长源汉川发电有限公司	孝感市	电力\n汉川市福星热电有限公司	孝感市	电力\n楚源高新科技集团股份有限公司	荆州市	电力\n湖北荣成再生科技有限公司	荆州市	电力\n监利市景和兴新产业投资有限公司	荆州市	电力\n安道麦股份有限公司	荆州市	电力\n山鹰华中纸业有限公司	荆州市	电力\n湖北中集超纤科技有限公司	荆州市	电力\n湖北华电江陵发电有限公司	荆州市	电力\n国能长源荆州热电有限公司	荆州市	电力\n黄冈大别山发电有限责任公司	黄冈市	电力\n赤壁晨力纸业有限公司	咸宁市	电力\n华润电力湖北有限公司	咸宁市	电力\n国能长源随州发电有限公司	随州市	电力\n湖北雅都恒兴纸业有限公司	随州市	电力\n华润电力(仙桃)有限公司	仙桃市	电力\n中石化江汉盐化工湖北有限公司	潜江市	电力\n潜江市正豪华盛铝电有限公司	潜江市	电力\n潜江瀚达热电有限公司	潜江市	电力\n武汉钢铁有限公司	武汉市	炼铁/炼钢\n大冶特殊钢有限公司	黄石市	炼铁/炼钢\n大冶市新冶特钢有限责任公司	黄石市	炼铁/炼钢\n大冶华鑫实业有限公司	黄石市	炼铁/炼钢\n宝武集团鄂城钢铁有限公司	鄂州市	炼铁/炼钢\n湖北金盛兰金科技有限公司	咸宁市	炼铁/炼钢\n广水华鑫冶金工业有限公司	随州市	炼铁/炼钢\n湖北亚东水泥有限公司	黄冈市	水泥\n阳新娲石绿色建材有限公司	黄石市	水泥\n阳新娲石水泥有限公司	黄石市	水泥\n华新水泥（阳新）有限公司	黄石市	水泥\n华新水泥（黄石）有限公司	黄石市	水泥\n华新水泥（大冶）有限公司	黄石市	水泥\n大冶尖峰水泥有限公司	黄石市	水泥\n华新金龙水泥（郧县）有限公司	十堰市	水泥\n湖北武当水泥有限公司	十堰市	水泥\n竹溪瑞城水泥有限公司	十堰市	水泥\n华新水泥（房县）有限公司	十堰市	水泥\n宜昌花林水泥有限公司	宜昌市	水泥\n葛洲坝当阳水泥有限公司	宜昌市	水泥\n葛洲坝兴山水泥有限公司	宜昌市	水泥\n华新水泥（秭归）有限公司	宜昌市	水泥\n华新水泥（长阳）有限公司	宜昌市	水泥\n宜昌骏王集团水泥有限公司	宜昌市	水泥\n华新水泥（宜昌）有限公司	宜昌市	水泥\n华新水泥（襄阳）有限公司	襄阳市	水泥\n湖北谷城泰隆水泥有限公司	襄阳市	水泥\n葛洲坝老河口水泥有限公司	襄阳市	水泥\n葛洲坝宜城水泥有限公司	襄阳市	水泥\n湖北世纪新峰科技集团有限公司	荆门市	水泥\n葛洲坝荆门水泥有限公司	荆门市	水泥\n湖北京兰水泥集团有限公司	荆门市	水泥\n葛洲坝钟祥水泥有限公司	荆门市	水泥\n湖北白兆山水泥有限公司	孝感市	水泥\n葛洲坝松滋水泥有限公司	荆州市	水泥\n黄冈亚东水泥有限公司	黄冈市	水泥\n华新水泥（武穴）有限公司	黄冈市	水泥\n葛洲坝嘉鱼水泥有限公司	咸宁市	水泥\n崇阳县昌华实业有限公司	咸宁市	水泥\n华新水泥（赤壁）有限公司	咸宁市	水泥\n华新水泥（恩施）有限公司	恩施土家族苗族自治州	水泥\n恩施州腾龙水泥有限责任公司	恩施土家族苗族自治州	水泥\n建始县泰丰水泥有限责任公司	恩施土家族苗族自治州	水泥\n来凤县金凤建材工业有限责任公司	恩施土家族苗族自治州	水泥\n华新水泥（鹤峰）民族建材有限公司	恩施土家族苗族自治州	水泥\n赤壁市丹阁铝业有限责任公司	咸宁市	铝冶炼\n潜江正豪华盛铝电有限公司	潜江市	铝冶炼`;
+        const allCompanies=(tsv=>{const l=tsv.trim().split('\n').filter(Boolean),h=l[0].split('\t');return l.slice(1).map(ln=>{const v=ln.split('\t');let e={};h.forEach((hd,i)=>{e[hd.trim()]=v[i]?v[i].trim():''});return e})})(companyRawData);
+        const virtualCompanyNames={'汽车':["东风汽车集团","神龙汽车","上汽通用武汉基地","吉利路特斯","小鹏汽车武汉基地"],'建筑':["中建三局","武汉建工","山河建设","湖北联投","中铁十一局"],'汽车零部件':["法雷奥","佛吉亚","德尔福","博世华域","伟巴斯特"]};
+        const chainDefinitions={'steel-auto':{title:'电力 → 钢铁 → 汽车',stages:['电力','炼铁/炼钢','汽车'],categories:[{name:'电力'},{name:'炼铁/炼钢'},{name:'汽车'}]},'cement-building':{title:'电力 → 水泥 → 建筑',stages:['电力','水泥','建筑'],categories:[{name:'电力'},{name:'水泥'},{name:'建筑'}]},'aluminum-auto-parts':{title:'电力 → 铝冶炼 → 汽车零部件',stages:['电力','铝冶炼','汽车零部件'],categories:[{name:'电力'},{name:'铝冶炼'},{name:'汽车零部件'}]},'power-steel':{title:'电力 → 钢铁 (上游短链)',stages:['电力','炼铁/炼钢'],categories:[{name:'电力'},{name:'炼铁/炼钢'}]},'power-cement':{title:'电力 → 水泥 (上游短链)',stages:['电力','水泥'],categories:[{name:'电力'},{name:'水泥'}]}};
+        chainGraphChart = echarts.init(document.getElementById('chain-graph-container'));
+        function renderChainGraph(){
+            const selectedValue=document.getElementById('chain-selector').value;if(!selectedValue){chainGraphChart.clear();return}
+            chainGraphChart.showLoading({
+                text:'加载中...',
+                color:'var(--highlight-color)',
+                textColor:'#fff',
+                maskColor:'rgba(10,42,80,0.4)'});
+            const definition=chainDefinitions[selectedValue],
+                colors=['#5470c6','#91cc75','#fac858','#ee6666','#73c0de','#3ba272','#fc8452','#9a60b4','#ea7ccc'],
+                categoriesWithColor=definition.categories.map((c,i)=>({...c,itemStyle:{color:colors[i%colors.length]}}));
+            setTimeout(()=>{
+                const graphData=(def=>{
+                    let nodes=[],
+                        links=[],
+                        cumCarbon=new Map(),
+                        prevStageNodes=[];
+                    def.stages.forEach(stageName=>{
+                        let stageComps=allCompanies.filter(c=>c['所属行业']===stageName);
+                        if(stageComps.length===0&&virtualCompanyNames[stageName]){stageComps=virtualCompanyNames[stageName].map(n=>({'原始企业名称':n,'所属行业':stageName,'所属城市':'虚拟'}))}stageComps=stageComps.sort(()=>.5-Math.random()).slice(0,8);
+                        const currentStageNodes=[];stageComps.forEach((c,i)=>{const cName=c['原始企业名称'];
+                            if(cumCarbon.has(cName))return;
+                            let cVal=0;cVal+=50+Math.random()*150;
+                            if(prevStageNodes.length>0){const supplier=prevStageNodes[i%prevStageNodes.length],
+                                transferredCarbon=Math.max(1,cumCarbon.get(supplier.id)*(.3+Math.random()*.3));
+                                cVal+=transferredCarbon;
+                                links.push({source:supplier.id,target:cName,value:transferredCarbon})}
+                            else{cVal=200+Math.random()*400}cumCarbon.set(cName,cVal);currentStageNodes.push({id:cName,name:cName,category:stageName,value:cVal,symbolSize:15+Math.log(cVal)*4,city:c['所属城市']})});nodes.push(...currentStageNodes);
+                        if(currentStageNodes.length>0){prevStageNodes=[...currentStageNodes]}});
+                    return{nodes:nodes,links:links}})(definition);
+                chainGraphChart.hideLoading();
+                chainGraphChart.setOption({backgroundColor:'transparent',tooltip:{formatter:(p)=>{if(p.dataType==='node'){const n=p.data,u=graphData.links.filter(l=>l.target===n.name).map(l=>`<li>${l.source} (${l.value.toFixed(0)} t)</li>`).join(''),d=graphData.links.filter(l=>l.source===n.name).map(l=>`<li>${l.target}</li>`).join('');return`<table class="tooltip-table"><tr style="text-align:center;font-weight:bold;"><td colspan="2">${n.name}</td></tr><tr><td class="label">行业</td><td class="value">${n.category}</td></tr><tr><td class="label">城市</td><td class="value">${n.city}</td></tr><tr><td class="label">碳足迹</td><td class="value">${n.value.toFixed(0)} tCO₂e</td></tr><tr><td class="label">上游</td><td class="value"><ul class="tooltip-list">${u||'<li>无</li>'}</ul></td></tr><tr><td class="label">下游</td><td class="value"><ul class="tooltip-list">${d||'<li>无</li>'}</ul></td></tr></table>`}return`${p.data.source} → ${p.data.target}: ${p.data.value.toFixed(0)} tCO₂e`},borderWidth:0,padding:0,backgroundColor:'rgba(255,255,255,0.95)',extraCssText:'box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 4px; color: #333;'},legend:[{data:categoriesWithColor.map(a=>a.name),bottom:10,textStyle:{color:'var(--text-color)'}}],series:[{type:'graph',layout:'force',roam:true,draggable:true,data:graphData.nodes,links:graphData.links,categories:categoriesWithColor,force:{repulsion:150,edgeLength:[80,150],gravity:0.1,layoutAnimation:true},emphasis:{focus:'adjacency',lineStyle:{width:5}},edgeSymbol:['none','arrow'],edgeSymbolSize:7,lineStyle:{color:'source',curveness:0.1,opacity:0.8,width:(p)=>1+Math.log(p.value||1)},label:{show:true,position:'right',formatter:'{b}',fontSize:12,color:'#fff'}}]});
+            },100)
+        }
+        document.getElementById('chain-selector').addEventListener('change',renderChainGraph);
+        renderChainGraph();
+        maccChart = echarts.init(document.getElementById('macc_chart'));
+        const maccData = [
+            { name: '节能改造', cost: 120, potential: 250 },
+            { name: '燃料替代', cost: 210, potential: 400 },
+            { name: '工艺优化', cost: 320, potential: 300 },
+            { name: '设备更新', cost: 450, potential: 200 },
+            { name: 'CCUS',     cost: 580, potential: 150 }
+        ];
+        let cumulativePotential = 0;
+        const processedData = maccData.map(item => {
+            const startPoint = cumulativePotential;
+            cumulativePotential += item.potential;
+            return [startPoint, item.cost, cumulativePotential, item.name, item.potential];
+        });
+
+        maccChart.setOption({
+            backgroundColor: 'transparent',
+            title: {
+                text: '区域碳减排潜力分析 (MACC)',
+                left: 'center',
+                textStyle: { color: '#61dafb', fontSize: 18 }
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: (params) => {
+                    const data = params.data;
+                    return `
+                        <strong>${data[3]}</strong><br/>
+                        减排成本: ${data[1]} 元/吨<br/>
+                        减排潜力: ${data[4]} 万吨CO₂
+                    `;
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '10%',
+                bottom: '8%',
+                top: '25%',
+                containLabel: true
+            },
+            xAxis: {
+                name: '累计减排潜力 (万吨CO₂)',
+                nameLocation: 'center',
+                nameGap: 30,
+                nameTextStyle: { color: '#fff' },
+                type: 'value',
+                axisLine: { lineStyle: { color: '#8392A2' } },
+                axisLabel: { color: '#fff' }
+            },
+            yAxis: {
+                name: '边际减排成本 (元/吨)',
+                nameTextStyle: { color: '#fff', align: 'left' },
+                type: 'value',
+                axisLine: { show: true, lineStyle: { color: '#8392A2' } },
+                splitLine: { lineStyle: { type: 'dashed', color: '#2B3B52' } },
+                axisLabel: { color: '#fff' }
+            },
+            series: [{
+                type: 'custom',
+                renderItem: (params, api) => {
+                    const start = api.coord([api.value(0), api.value(1)]);
+                    const end = api.coord([api.value(2), 0]);
+                    const height = start[1] - end[1];
+                    return {
+                        type: 'rect',
+                        shape: {
+                            x: start[0],
+                            y: end[1],
+                            width: end[0] - start[0],
+                            height: height
+                        },
+                        style: {
+                            ...api.style(),
+                            stroke: 'rgba(255, 255, 255, 0.7)',
+                            lineWidth: 1
+                        }
+                    };
+                },
+                itemStyle: {
+                     color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: '#007bff' },
+                        { offset: 1, color: '#002f6c' }
+                    ])
+                },
+                label: {
+                    show: true,
+                    position: 'top',
+                    formatter: (params) => params.data[3],
+                    color: '#fff',
+                    fontSize: 10
+                },
+                data: processedData
+            }]
+        });
+        sankeyChart = echarts.init(document.getElementById('sankey_chart'));
+        sankeyChart.setOption({
+            backgroundColor:'transparent',
+            tooltip:{
+                trigger:'item',triggerOn:'mousemove'
+            },
+            series:[{
+                type:'sankey',
+                layout:'none',
+                emphasis:{
+                    focus:'adjacency'},
+                data:[{name:'煤炭开采'}, {name:'原油开采'}, {name:'铁矿石'}, {name:'非金属矿'}, {name:'电力热力'}, {name:'石油加工'}, {name:'黑色金属冶炼'}, {name:'非金属矿物制品'}, {name:'化学原料'}, {name:'交通运输设备'}, {name:'通用设备制造'}, {name:'建筑业'}, {name:'居民消费'}, {name:'其他'}],
+                links:[{source:'煤炭开采',target:'电力热力',value:200},
+                    {source:'煤炭开采',target:'黑色金属冶炼',value:90},
+                    {source:'煤炭开采',target:'化学原料',value:40},
+                    {source:'原油开采',target:'石油加工',value:180},
+                    {source:'铁矿石',target:'黑色金属冶炼',value:220},
+                    {source:'非金属矿',target:'非金属矿物制品',value:110},
+                    {source:'电力热力',target:'居民消费',value:80},
+                    {source:'电力热力',target:'建筑业',value:40},
+                    {source:'电力热力',target:'通用设备制造',value:50},
+                    {source:'石油加工',target:'化学原料',value:100},
+                    {source:'石油加工',target:'交通运输设备',value:80},
+                    {source:'黑色金属冶炼',target:'交通运输设备',value:150},
+                    {source:'黑色金属冶炼',target:'建筑业',value:160},
+                    {source:'非金属矿物制品',target:'建筑业',value:110},
+                    {source:'化学原料',target:'其他',value:140},
+                    {source:'交通运输设备',target:'居民消费',value:230},
+                    {source:'通用设备制造',target:'其他',value:50},
+                    {source:'建筑业',target:'其他',value:310}],
+                lineStyle:{color:'gradient',curveness:0.5},
+                label:{color:'rgba(255,255,255,0.9)',fontSize:12},
+                itemStyle:{borderWidth:1,borderColor:'#aaa'}}],
+            textStyle:{color:'#fff'}});
+        const simulationCompanies = allCompanies.map(c => {
+            let emissions = 0;
+            let mac = 0;
+            switch (c['所属行业']) {
+                case '电力':
+                    emissions = 500000 + Math.random() * 1500000;
+                    mac = 20 + Math.random() * 100;
+                    break;
+                case '炼铁/炼钢':
+                    emissions = 800000 + Math.random() * 2200000;
+                    mac = 80 + Math.random() * 170;
+                    break;
+                case '水泥':
+                    emissions = 300000 + Math.random() * 700000;
+                    mac = 150 + Math.random() * 200;
+                    break;
+                case '铝冶炼':
+                    emissions = 400000 + Math.random() * 1100000;
+                    mac = 120 + Math.random() * 170;
+                    break;
+                default:
+                    emissions = 100000 + Math.random() * 200000;
+                    mac = 70 + Math.random() * 100;
+                    break;
+            }
+            return {
+                name: c['原始企业名称'],
+                industry: c['所属行业'],
+                emissions: Math.round(emissions),
+                mac: Math.round(mac),
+                originalMac: Math.round(mac)
+            };
+        });
+        function runSimulation() {
+            const taxRate = parseFloat(document.getElementById('tax-rate').value) || 0;
+            const allowanceRatio = parseFloat(document.getElementById('allowance-ratio').value) || 0;
+            const techStandard = document.getElementById('tech-standard').value;
+            const revenueRecyclingRatio = parseFloat(document.getElementById('revenue-recycling-ratio').value) || 0;
+            const policyIntensity = parseFloat(document.getElementById('policy-intensity').value) || 0;
+            let totalReduction = 0;
+            let totalTaxRevenue = 0;
+            let affectedCompanies = [];
+            simulationCompanies.forEach(company => {
+                let currentMac = company.originalMac;
+                if (techStandard === 'advanced') {
+                    currentMac *= 0.8;
+                } else if (techStandard === 'phaseout') {
+                    currentMac *= 1.2;
+                }
+                if (company.industry === '电力') {
+                    currentMac *= (1 - (policyIntensity / 100));
+                }
+
+                const freeAllowance = company.emissions * (allowanceRatio / 100);
+                const taxableEmissions = Math.max(0, company.emissions - freeAllowance);
+                let cost = 0;
+                let reduction = 0;
+                if (currentMac < taxRate && taxableEmissions > 0) {
+                    cost = taxableEmissions * currentMac;
+                    reduction = taxableEmissions;
+                } else {
+                    cost = taxableEmissions * taxRate;
+                    reduction = 0;
+                    if(cost > 0) {
+                        affectedCompanies.push({ name: company.name, finalCost: cost });
+                    }
+                }
+                totalReduction += reduction;
+                totalTaxRevenue += (taxableEmissions - reduction) * taxRate;
+            });
+            document.getElementById('total-reduction-output').textContent = `${(totalReduction / 1e4).toFixed(2)}万吨`;
+            document.getElementById('affected-companies-output').textContent = `${affectedCompanies.length}家`;
+            const baseImpact = -0.02 * (taxRate / 50);
+            const recyclingBenefit = 0.022 * (taxRate / 50) * (revenueRecyclingRatio / 100);
+            const finalGdpImpact = baseImpact + recyclingBenefit;
+            document.getElementById('gdp-impact-output').textContent = `${finalGdpImpact.toFixed(3)}%`;
+            affectedCompanies.sort((a, b) => b.finalCost - a.finalCost);
+            const tableBody = document.querySelector("#affected-list-container tbody");
+            tableBody.innerHTML = '';
+            const topAffected = affectedCompanies.slice(0, 15);
+            topAffected.forEach(c => {
+                tableBody.innerHTML += `<tr><td>${c.name}</td><td>+${(c.finalCost / 1e4).toFixed(2)}</td></tr>`;
+            });
+        }
+        document.getElementById('run-simulation-btn').addEventListener('click',runSimulation);
+        runSimulation();
+    }
+    function resizeAllCharts() {
+        if(factorChart) factorChart.resize();
+        if(panoramaCandlestickChart) panoramaCandlestickChart.resize();
+        if(pieChart) pieChart.resize();
+        if(sectorLineChart) sectorLineChart.resize();
+        if(provinceBarChart) provinceBarChart.resize();
+        if(knowledgeGraphChart) knowledgeGraphChart.resize();
+        if(mainTradingChart) mainTradingChart.resize();
+        if(tradingCandlestickChart) tradingCandlestickChart.resize();
+        if(chainGraphChart) chainGraphChart.resize();
+        if(maccChart) maccChart.resize();
+        if(sankeyChart) sankeyChart.resize();
+    }
+    window.addEventListener('resize', resizeAllCharts);
+    const initialTarget = document.querySelector('.sidebar .nav-link.active')?.dataset.target || 'page-panorama';
+    switchPage(initialTarget);
+    const createTaskBtn = document.querySelector('.create-task-btn');
+    const taskModal = document.getElementById('task-modal');
+    const closeModalBtn = document.querySelector('.close-button');
+    const taskForm = document.getElementById('task-form');
+    const taskTableBody = document.querySelector('#task-table tbody');
+    const taskIdDisplay = document.getElementById('task-id-display');
+    let dailyTaskCounter = 1;
+    let lastGenerationDate = null;
+    function generateTaskId() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const currentDate = `${year}${month}${day}`;
+        if (currentDate !== lastGenerationDate) {
+            dailyTaskCounter = 1;
+            lastGenerationDate = currentDate;
+        }
+        const taskId = `RW${currentDate}${String(dailyTaskCounter).padStart(2, '0')}`;
+        return taskId;
+    }
+    function showTaskModal() {
+        taskIdDisplay.textContent = generateTaskId();
+        taskModal.style.display = 'flex';
+    }
+    function hideTaskModal() {
+        taskModal.style.display = 'none';
+        taskForm.reset();
+    document.getElementById('task-company').removeAttribute('readonly');
+    }
+    createTaskBtn.addEventListener('click', showTaskModal);
+    closeModalBtn.addEventListener('click', hideTaskModal);
+    window.addEventListener('click', (event) => {
+        if (event.target == taskModal) {
+            hideTaskModal();
+        }
+    });
+    taskForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const taskId = taskIdDisplay.textContent;
+        const companyName = document.getElementById('task-company').value;
+        const riskDescription = document.getElementById('task-risk').value;
+        const department = document.getElementById('task-department').value;
+        const newRowHTML = `
+            <tr>
+                <td>${taskId}</td>
+                <td title="${companyName}">${companyName}</td>
+                <td>${riskDescription}</td>
+                <td>${department}</td>
+                <td><span class="status-tag status-new">新发布</span></td>
+            </tr>
+        `;
+        taskTableBody.insertAdjacentHTML('afterbegin', newRowHTML);
+        dailyTaskCounter++;
+        const kpiPendingTasks = document.getElementById('kpi-pending-tasks');
+        kpiPendingTasks.textContent = parseInt(kpiPendingTasks.textContent) + 1;
+        hideTaskModal();
+    });
+    const viewTaskBtn = document.getElementById('view-task-details-btn');
+    viewTaskBtn.addEventListener('click', () => {
+        if (currentTopRiskCompany) {
+            const taskTableBody = document.querySelector('#task-table tbody');
+            const rows = taskTableBody.querySelectorAll('tr');
+            rows.forEach(row => {
+                const companyCell = row.querySelector('td:nth-child(2)');
+                if (companyCell && companyCell.textContent === currentTopRiskCompany.originalName) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    rows.forEach(r => r.classList.remove('task-highlight'));
+                    setTimeout(() => {
+                        row.classList.add('task-highlight');
+                    }, 10);
+                }
+            });
+        }
+    });
+});
+</script>
+</body>
+</html>
